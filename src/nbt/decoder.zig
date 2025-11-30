@@ -1,3 +1,5 @@
+//! Functions for decoding a NBT file
+
 const std = @import("std");
 
 const nbt = @import("nbt.zig");
@@ -5,40 +7,6 @@ const tags = nbt.tags;
 const TagId = nbt.TagId;
 
 // TODO: do not use anyerror everywhere
-
-/// Decode a nbt stream
-pub fn decodeNbtRoot(data: *std.io.Reader, alloc: std.mem.Allocator) anyerror!tags.Compound {
-    // Allocate pointer to hashmap
-    var ret: tags.Compound = try alloc.create(tags.CompoundHashMap);
-    ret.* = .init(alloc);
-    errdefer freeNbt(ret, alloc);
-
-    // Read tags as long as possible
-    while (true) {
-        // Check if we have reached the end of the data
-        // using peekByte and detecting endOfStream
-        _ = data.peekByte() catch |e| {
-            if (e == error.EndOfStream) break else return e;
-        };
-
-        // Read named tag
-        const named_tag = try decodeNamedTag(data, alloc);
-        errdefer freeNbt(named_tag, alloc);
-
-        // Until tag end
-        if (named_tag.payload == .tag_end)
-            break;
-
-        // Check that the key doesn't already exist
-        if (ret.contains(named_tag.name))
-            return error.KeyDuplicate;
-
-        // Add to hashmap
-        try ret.put(named_tag.name, named_tag);
-    }
-
-    return ret;
-}
 
 /// Reads a single tag from a reader stream
 /// Arrays and names are allocated with alloc and owned by the called, should be freed
@@ -52,14 +20,10 @@ fn decodeNamedTag(data: *std.io.Reader, alloc: std.mem.Allocator) anyerror!tags.
         return tags.NamedTag{ .name = "", .payload = .tag_end };
     }
 
-    // Read name length
-    const name_len = try data.takeInt(u16, nbt.nbt_endianness);
-    std.debug.print("Name length: {}\n", .{name_len});
-
     // Read name
+    const name_len = try data.takeInt(u16, nbt.nbt_endianness);
     const name = try data.readAlloc(alloc, name_len);
     errdefer alloc.free(name);
-    std.debug.print("Name: {s}\n", .{name});
 
     // Read payload
     const payload = try decodePayload(tag_id, data, alloc);
@@ -80,7 +44,7 @@ fn decodePayload(tag_id: TagId, data: *std.io.Reader, alloc: std.mem.Allocator) 
         .tag_byte_array => tags.AnyPayload{ .tag_byte_array = try decodeByteArray(data, alloc) },
         .tag_string => tags.AnyPayload{ .tag_string = try decodeString(data, alloc) },
         .tag_list => tags.AnyPayload{ .tag_list = try decodeList(data, alloc) },
-        .tag_compound => tags.AnyPayload{ .tag_compound = try decodeCompound(data, alloc) },
+        .tag_compound => tags.AnyPayload{ .tag_compound = try decodeCompound(data, alloc, false) },
     };
 }
 
@@ -195,23 +159,30 @@ fn decodeListCompound(data: *std.io.Reader, count: usize, alloc: std.mem.Allocat
 
     // Read each compound
     for (ret) |*compound| {
-        compound.* = try decodeCompound(data, alloc);
+        compound.* = try decodeCompound(data, alloc, false);
     }
     return ret;
 }
 
 /// Decode a compound's subtags into the compound hashmap
-fn decodeCompound(data: *std.io.Reader, alloc: std.mem.Allocator) anyerror!tags.Compound {
+/// Allow_eos should be false except for root compounds where we except the end of the file
+pub fn decodeCompound(data: *std.io.Reader, alloc: std.mem.Allocator, comptime allow_eos: bool) anyerror!tags.Compound {
     // Allocate pointer to hashmap
     var ret: tags.Compound = try alloc.create(tags.CompoundHashMap);
     ret.* = .init(alloc);
-    errdefer freeNbt(ret, alloc);
 
     // Read tags as long as possible
     while (true) {
+        // Check if we have reached the end of the data
+        // using peekByte and detecting endOfStream
+        if (allow_eos) {
+            _ = data.peekByte() catch |e| {
+                if (e == error.EndOfStream) break else return e;
+            };
+        }
+
         // Read named tag
         const named_tag = try decodeNamedTag(data, alloc);
-        errdefer freeNbt(named_tag, alloc);
 
         // Until tag end
         if (named_tag.payload == .tag_end)
@@ -226,79 +197,6 @@ fn decodeCompound(data: *std.io.Reader, alloc: std.mem.Allocator) anyerror!tags.
     }
 
     return ret;
-}
-
-// TODO: check that this doesn't descend the tree in superfluous ways (is the compiler smart enough?)
-// TODO: move elsewhere
-// TODO: fuzz the decoder to see places where freeNbt is not done on errdefer
-// TODO: use an arena? this might be very bad for the stack
-/// Free a NBT object using the allocator that allocated it
-pub fn freeNbt(nbt_thing: anytype, alloc: std.mem.Allocator) void {
-    switch (@TypeOf(nbt_thing)) {
-        // Named tag
-        tags.NamedTag => {
-            const named_tag: tags.NamedTag = nbt_thing;
-            // Free name
-            //alloc.free(named_tag.name);
-            // Free payload (inline call to avoid stack obliteration)
-            @call(.always_inline, freeNbt, .{ named_tag.payload, alloc });
-        },
-        // Any payload
-        tags.AnyPayload => {
-            const any_payload: tags.AnyPayload = nbt_thing;
-            // Unpack anypayload and call freeNbt again on it
-            switch (any_payload) {
-                inline else => |payload| freeNbt(payload, alloc),
-            }
-        },
-        // Compound tags
-        tags.Compound => {
-            const compound: tags.Compound = nbt_thing;
-            // Iterate through subtags
-            var it = compound.iterator();
-            while (it.next()) |entry| {
-                // Free name
-                alloc.free(entry.key_ptr.*);
-                // Free contents
-                freeNbt(entry.value_ptr.*, alloc);
-            }
-
-            // Deinit hashmap
-            compound.deinit();
-            // Destroy pointer
-            alloc.destroy(compound);
-        },
-        // List
-        tags.List => {
-            const list: tags.List = nbt_thing;
-            // Descend depending on the type
-            switch (list) {
-                .tag_byte_array => |array| for (array) |elem| freeNbt(elem, alloc),
-                .tag_string => |array| for (array) |elem| freeNbt(elem, alloc),
-                .tag_list => |array| for (array) |elem| freeNbt(elem, alloc),
-                .tag_compound => |array| for (array) |elem| freeNbt(elem, alloc),
-                else => {},
-            }
-            // Free list itself
-            switch (list) {
-                inline else => |array| if (@TypeOf(array) != void) alloc.free(array),
-            }
-        },
-        // Byte array
-        tags.ByteArray => {
-            const byte_array: tags.ByteArray = nbt_thing;
-            // Free string
-            alloc.free(byte_array);
-        },
-        // Strings
-        tags.String => {
-            const string: tags.String = nbt_thing;
-            // Free string
-            alloc.free(string);
-        },
-        // Others: do nothing
-        else => {},
-    }
 }
 
 /// Reads an integer or float from a reader

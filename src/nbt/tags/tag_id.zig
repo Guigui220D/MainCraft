@@ -1,3 +1,5 @@
+//! Tags Ids for version 19132
+
 /// 1 byte tag IDs from the NBT format
 pub const TagId = enum(u8) {
     tag_end = 0, // Ends compound tags

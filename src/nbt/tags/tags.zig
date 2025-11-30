@@ -1,4 +1,5 @@
 //! Tags namespace
+
 const std = @import("std");
 const TagId = @import("tag_id.zig").TagId;
 

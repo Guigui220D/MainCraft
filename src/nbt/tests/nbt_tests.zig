@@ -23,4 +23,6 @@ test "loading and freeing level.nbt" {
 
     const nbt_root = try nbt.Tree.decode(reader, alloc);
     defer nbt_root.deinit();
+
+    //std.debug.print("{f}\n", .{nbt_root});
 }

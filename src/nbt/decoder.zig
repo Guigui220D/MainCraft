@@ -6,12 +6,18 @@ const nbt = @import("nbt.zig");
 const tags = nbt.tags;
 const TagId = nbt.TagId;
 
-// TODO: do not use anyerror everywhere
+/// Nbt decoder specific errors
+const NbtDecoderError = error{
+    InvalidTagId,
+    KeyDuplicate,
+};
+
+/// All errors that can happen when decoding
+const ErrSet = NbtDecoderError || std.Io.Reader.TakeEnumError || std.mem.Allocator.Error;
 
 /// Reads a single tag from a reader stream
 /// Arrays and names are allocated with alloc and owned by the called, should be freed
-/// TODO: free method to kill a whole NBT tree
-fn decodeNamedTag(data: *std.io.Reader, alloc: std.mem.Allocator) anyerror!tags.NamedTag {
+fn decodeNamedTag(data: *std.Io.Reader, alloc: std.mem.Allocator) ErrSet!tags.NamedTag {
     // Read tag id
     const tag_id = try data.takeEnum(TagId, nbt.nbt_endianness);
 
@@ -32,9 +38,9 @@ fn decodeNamedTag(data: *std.io.Reader, alloc: std.mem.Allocator) anyerror!tags.
 
 /// Read a payload of the specified type
 /// The type must have a payload and be supported
-fn decodePayload(tag_id: TagId, data: *std.io.Reader, alloc: std.mem.Allocator) anyerror!tags.AnyPayload {
+fn decodePayload(tag_id: TagId, data: *std.Io.Reader, alloc: std.mem.Allocator) ErrSet!tags.AnyPayload {
     return switch (tag_id) {
-        .tag_end => error.InvalidTagId, // Has no payload
+        .tag_end => NbtDecoderError.InvalidTagId, // Has no payload
         .tag_byte => tags.AnyPayload{ .tag_byte = try takeNumber(tags.Byte, data) },
         .tag_short => tags.AnyPayload{ .tag_short = try takeNumber(tags.Short, data) },
         .tag_int => tags.AnyPayload{ .tag_int = try takeNumber(tags.Int, data) },
@@ -50,7 +56,7 @@ fn decodePayload(tag_id: TagId, data: *std.io.Reader, alloc: std.mem.Allocator) 
 
 /// Read a byte array payload
 /// The result is allocated with the passed allocator and owned by caller
-fn decodeByteArray(data: *std.io.Reader, alloc: std.mem.Allocator) anyerror!tags.ByteArray {
+fn decodeByteArray(data: *std.Io.Reader, alloc: std.mem.Allocator) ErrSet!tags.ByteArray {
     // Read length of array
     // Technically len should be a i32, but I don't see a situation where len could be negative
     const len = try data.takeInt(u32, nbt.nbt_endianness);
@@ -61,7 +67,7 @@ fn decodeByteArray(data: *std.io.Reader, alloc: std.mem.Allocator) anyerror!tags
 
 /// Read a byte array payload
 /// The result is allocated with the passed allocator and owned by caller
-fn decodeString(data: *std.io.Reader, alloc: std.mem.Allocator) anyerror!tags.String {
+fn decodeString(data: *std.Io.Reader, alloc: std.mem.Allocator) ErrSet!tags.String {
     // Read length of array
     const len = try data.takeInt(u16, nbt.nbt_endianness);
 
@@ -71,7 +77,7 @@ fn decodeString(data: *std.io.Reader, alloc: std.mem.Allocator) anyerror!tags.St
 
 /// Read a list payload
 /// The result is allocated with the passed allocator and owned by caller
-fn decodeList(data: *std.io.Reader, alloc: std.mem.Allocator) anyerror!tags.List {
+fn decodeList(data: *std.Io.Reader, alloc: std.mem.Allocator) ErrSet!tags.List {
     // Read tag id for stored type
     const tag_id = try data.takeEnum(TagId, nbt.nbt_endianness);
 
@@ -96,7 +102,7 @@ fn decodeList(data: *std.io.Reader, alloc: std.mem.Allocator) anyerror!tags.List
 
 /// Read a numbers list
 /// The result is allocated with the passed allocator and owned by caller
-fn decodeListNumbers(comptime NumType: type, data: *std.io.Reader, count: usize, alloc: std.mem.Allocator) anyerror![]const NumType {
+fn decodeListNumbers(comptime NumType: type, data: *std.Io.Reader, count: usize, alloc: std.mem.Allocator) ErrSet![]const NumType {
     // Allocate buffer
     const ret = try alloc.alloc(NumType, count);
     errdefer alloc.free(ret);
@@ -110,7 +116,7 @@ fn decodeListNumbers(comptime NumType: type, data: *std.io.Reader, count: usize,
 
 /// Read a byte array list
 /// The result is allocated with the passed allocator and owned by caller
-fn decodeListByteArray(data: *std.io.Reader, count: usize, alloc: std.mem.Allocator) anyerror![]const tags.ByteArray {
+fn decodeListByteArray(data: *std.Io.Reader, count: usize, alloc: std.mem.Allocator) ErrSet![]const tags.ByteArray {
     // Allocate buffer
     const ret = try alloc.alloc(tags.ByteArray, count);
     errdefer alloc.free(ret);
@@ -124,7 +130,7 @@ fn decodeListByteArray(data: *std.io.Reader, count: usize, alloc: std.mem.Alloca
 
 /// Read a string list
 /// The result is allocated with the passed allocator and owned by caller
-fn decodeListString(data: *std.io.Reader, count: usize, alloc: std.mem.Allocator) anyerror![]const tags.String {
+fn decodeListString(data: *std.Io.Reader, count: usize, alloc: std.mem.Allocator) ErrSet![]const tags.String {
     // Allocate buffer
     const ret = try alloc.alloc(tags.String, count);
     errdefer alloc.free(ret);
@@ -138,7 +144,7 @@ fn decodeListString(data: *std.io.Reader, count: usize, alloc: std.mem.Allocator
 
 /// Read a list of lists
 /// The result is allocated with the passed allocator and owned by caller
-fn decodeListList(data: *std.io.Reader, count: usize, alloc: std.mem.Allocator) anyerror![]const tags.List {
+fn decodeListList(data: *std.Io.Reader, count: usize, alloc: std.mem.Allocator) ErrSet![]const tags.List {
     // Allocate buffer
     const ret = try alloc.alloc(tags.List, count);
     errdefer alloc.free(ret);
@@ -152,7 +158,7 @@ fn decodeListList(data: *std.io.Reader, count: usize, alloc: std.mem.Allocator) 
 
 /// Read a list of compounds
 /// The result is allocated with the passed allocator and owned by caller
-fn decodeListCompound(data: *std.io.Reader, count: usize, alloc: std.mem.Allocator) anyerror![]const tags.Compound {
+fn decodeListCompound(data: *std.Io.Reader, count: usize, alloc: std.mem.Allocator) ErrSet![]const tags.Compound {
     // Allocate buffer
     const ret = try alloc.alloc(tags.Compound, count);
     errdefer alloc.free(ret);
@@ -166,10 +172,10 @@ fn decodeListCompound(data: *std.io.Reader, count: usize, alloc: std.mem.Allocat
 
 /// Decode a compound's subtags into the compound hashmap
 /// Allow_eos should be false except for root compounds where we except the end of the file
-pub fn decodeCompound(data: *std.io.Reader, alloc: std.mem.Allocator, comptime allow_eos: bool) anyerror!tags.Compound {
+pub fn decodeCompound(data: *std.Io.Reader, alloc: std.mem.Allocator, comptime allow_eos: bool) ErrSet!tags.Compound {
     // Allocate pointer to hashmap
-    var ret: tags.Compound = try alloc.create(tags.CompoundHashMap);
-    ret.* = .init(alloc);
+    var ret: tags.Compound = .{ .hashmap = try alloc.create(tags.CompoundHashMap) };
+    ret.hashmap.* = .init(alloc);
 
     // Read tags as long as possible
     while (true) {
@@ -189,11 +195,11 @@ pub fn decodeCompound(data: *std.io.Reader, alloc: std.mem.Allocator, comptime a
             break;
 
         // Check that the key doesn't already exist
-        if (ret.contains(named_tag.name))
-            return error.KeyDuplicate;
+        if (ret.hashmap.contains(named_tag.name))
+            return NbtDecoderError.KeyDuplicate;
 
         // Add to hashmap
-        try ret.put(named_tag.name, named_tag);
+        try ret.hashmap.put(named_tag.name, named_tag);
     }
 
     return ret;
@@ -201,7 +207,7 @@ pub fn decodeCompound(data: *std.io.Reader, alloc: std.mem.Allocator, comptime a
 
 /// Reads an integer or float from a reader
 /// Just like reader.takeInt but handles floats
-fn takeNumber(comptime NumType: type, data: *std.io.Reader) anyerror!NumType {
+fn takeNumber(comptime NumType: type, data: *std.Io.Reader) ErrSet!NumType {
     // Type to pass to readInt before bitcasting
     const ReadType = switch (NumType) {
         tags.Float => u32,

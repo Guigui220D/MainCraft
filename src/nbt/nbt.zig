@@ -25,14 +25,14 @@ pub const Tree = struct {
         const arena_alloc = ret.arena.allocator();
 
         // Init empty compound
-        ret.compound = try arena_alloc.create(tags.CompoundHashMap);
-        ret.compound.* = .init(arena_alloc);
+        ret.compound.hashmap = try arena_alloc.create(tags.CompoundHashMap);
+        ret.compound.hashmap.* = .init(arena_alloc);
 
         return ret;
     }
 
     /// Decodes from an raw NBT byte stream
-    pub fn decode(data: *std.io.Reader, alloc: std.mem.Allocator) !Tree {
+    pub fn decode(data: *std.Io.Reader, alloc: std.mem.Allocator) !Tree {
         var ret: Tree = undefined;
 
         // Init arena
@@ -50,6 +50,11 @@ pub const Tree = struct {
     pub fn deinit(self: Tree) void {
         // Much simpler thanks to the arena
         self.arena.deinit();
+    }
+
+    /// Dump the tree as SNBT
+    pub fn format(self: Tree, writer: *std.Io.Writer) !void {
+        try self.compound.format(writer);
     }
 };
 

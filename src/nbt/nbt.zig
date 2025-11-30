@@ -46,6 +46,30 @@ pub const Tree = struct {
         return ret;
     }
 
+    /// Decodes from a gzip compressed NBT byte stream
+    pub fn decodeCompressed(data: *std.Io.Reader, alloc: std.mem.Allocator) !Tree {
+        var ret: Tree = undefined;
+
+        // Init arena
+        ret.arena = .init(alloc);
+        errdefer ret.arena.deinit();
+        const arena_alloc = ret.arena.allocator();
+
+        // Allocate buffer
+        // TODO: understand what that is all about
+        const buf = try alloc.alloc(u8, std.compress.flate.max_window_len);
+        defer alloc.free(buf);
+
+        // Init decompress
+        var decomp = std.compress.flate.Decompress.init(data, .gzip, buf);
+        const dec_reader = &decomp.reader;
+
+        // Decode into a new compound
+        ret.compound = try decoder.decodeCompound(dec_reader, arena_alloc, true);
+
+        return ret;
+    }
+
     /// Frees ressources taken by this NBT tree
     pub fn deinit(self: Tree) void {
         // Much simpler thanks to the arena

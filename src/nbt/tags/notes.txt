@@ -1,0 +1,10 @@
+In Minecraft b1.7.3, the NBT version is 19132, which is before the Anvil format version that appeared in release 1.2.1.
+
+Anvil added Integer Arrays, but the technical specifications are the same for the 19132 and 19133 (anvil):
+
+- Encoding: Big-endian for all numeric types (Java Edition)
+- Compression: Typically GZip compressed
+- String encoding: Modified UTF-8
+- Root structure: Implicitly starts with TAG_Compound
+
+https://fr.minecraft.wiki/w/Format_NBT

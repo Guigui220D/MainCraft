@@ -8,3 +8,9 @@ Anvil added Integer Arrays, but the technical specifications are the same for th
 - Root structure: Implicitly starts with TAG_Compound
 
 https://fr.minecraft.wiki/w/Format_NBT
+https://c4k3.github.io/wiki.vg/NBT.html
+
+NBT.txt is a file that Notch originally wrote in 2011 to describe the format.
+
+Tests "bigtest.nbt" and "hello_world.nbt" were originally made by Notch to test the decoder.
+

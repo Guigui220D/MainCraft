@@ -3,6 +3,7 @@
 const std = @import("std");
 const TagId = @import("tag_id.zig").TagId;
 
+// TODO: can I get rid of NamedTag altogether?
 /// Representation of a complete tag
 pub const NamedTag = struct {
     name: []const u8,

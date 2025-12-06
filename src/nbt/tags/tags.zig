@@ -3,8 +3,7 @@
 const std = @import("std");
 const TagId = @import("tag_id.zig").TagId;
 
-// TODO: can I get rid of NamedTag altogether?
-/// Representation of a complete tag
+/// Representation of a complete tag inside a compound
 pub const NamedTag = struct {
     name: []const u8,
     payload: AnyPayload,
@@ -154,7 +153,7 @@ pub const List = union(TagId) {
 };
 
 /// Backing hashmap for compounds
-pub const CompoundHashMap = std.StringArrayHashMap(NamedTag);
+pub const CompoundHashMap = std.StringArrayHashMap(AnyPayload);
 
 /// Compound tag: many named tags (as an union for polymorphism)
 pub const Compound = struct {

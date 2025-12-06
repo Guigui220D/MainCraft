@@ -199,7 +199,7 @@ pub fn decodeCompound(data: *std.Io.Reader, alloc: std.mem.Allocator, comptime a
             return NbtDecoderError.KeyDuplicate;
 
         // Add to hashmap
-        try ret.hashmap.put(named_tag.name, named_tag);
+        try ret.hashmap.put(named_tag.name, named_tag.payload);
     }
 
     return ret;

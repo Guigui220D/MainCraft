@@ -22,9 +22,11 @@ test "decode hello_world.nbt" {
     const nbt_root = try nbt.Tree.decode(&reader, alloc);
     defer nbt_root.deinit();
 
-    // Compare with expected: TODO
+    // Compare with expected
+    const hello_world_compound = nbt_root.compound.hashmap.get("hello world").?.payload.tag_compound.hashmap;
 
-    //std.debug.print("{f}\n", .{nbt_root});
+    try std.testing.expectEqual(@as(usize, 1), hello_world_compound.count());
+    try std.testing.expectEqualStrings("Bananrama", hello_world_compound.get("name").?.payload.tag_string);
 }
 
 test "decode bigtest.nbt" {
@@ -125,7 +127,7 @@ test "decode bigtest.nbt" {
     }
 }
 
-test "loading decompressed level.bin embed" {
+test "loading decompressed level.bin" {
     const alloc = std.testing.allocator;
 
     // Read data
@@ -135,11 +137,9 @@ test "loading decompressed level.bin embed" {
     // Decode and then free
     const nbt_root = try nbt.Tree.decode(&reader, alloc);
     defer nbt_root.deinit();
-
-    //std.debug.print("{f}\n", .{nbt_root});
 }
 
-test "loading decompressed level.bin" {
+test "loading decompressed level.bin with fs" {
     const alloc = std.testing.allocator;
 
     const file = try std.fs.cwd().openFile("src/nbt/tests/data/level.bin", .{ .mode = .read_only });
@@ -152,8 +152,6 @@ test "loading decompressed level.bin" {
 
     const nbt_root = try nbt.Tree.decode(reader, alloc);
     defer nbt_root.deinit();
-
-    //std.debug.print("{f}\n", .{nbt_root});
 }
 
 test "loading compressed level.dat" {
@@ -166,6 +164,4 @@ test "loading compressed level.dat" {
     // Decode and then free
     const nbt_root = try nbt.Tree.decodeCompressed(&reader, alloc);
     defer nbt_root.deinit();
-
-    //std.debug.print("{f}\n", .{nbt_root});
 }

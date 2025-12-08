@@ -1,4 +1,5 @@
 //! Root of the NBT module
+//! To decode NBT data
 
 const std = @import("std");
 

@@ -4,11 +4,17 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-    // MODULES
+    // Dependencies
+    const network_dep = b.dependency("network", .{});
 
-    // Nbt library
+    // Internal modules
     const nbt_mod = b.addModule("nbt", .{
         .root_source_file = b.path("src/nbt/nbt.zig"),
+        .target = target,
+    });
+
+    const net_mod = b.addModule("net", .{
+        .root_source_file = b.path("src/net/net.zig"),
         .target = target,
     });
 
@@ -21,6 +27,8 @@ pub fn build(b: *std.Build) void {
             .optimize = optimize,
             .imports = &.{
                 .{ .name = "nbt", .module = nbt_mod },
+                .{ .name = "net", .module = net_mod },
+                .{ .name = "network", .module = network_dep.module("network") },
             },
         }),
     });
@@ -44,7 +52,12 @@ pub fn build(b: *std.Build) void {
     const nbt_mod_tests = b.addTest(.{
         .root_module = nbt_mod,
     });
-    const run_mod_tests = b.addRunArtifact(nbt_mod_tests);
+    const run_nbt_tests = b.addRunArtifact(nbt_mod_tests);
+
+    const net_mod_tests = b.addTest(.{
+        .root_module = net_mod,
+    });
+    const run_net_tests = b.addRunArtifact(net_mod_tests);
 
     // Client tests
     const exe_tests = b.addTest(.{
@@ -54,6 +67,7 @@ pub fn build(b: *std.Build) void {
 
     // All tests step
     const test_step = b.step("test", "Run tests");
-    test_step.dependOn(&run_mod_tests.step);
+    test_step.dependOn(&run_nbt_tests.step);
+    test_step.dependOn(&run_net_tests.step);
     test_step.dependOn(&run_exe_tests.step);
 }

@@ -1,15 +1,16 @@
 //! Writing and reading UTF-16 with sizes
 
 const std = @import("std");
+const net = @import("net.zig");
 
 /// Reads a string from the stream (length + utf16 bytes) into a utf8 string
 /// Caller owns the string (free with alloc)
 pub fn readString(stream: *std.Io.Reader, alloc: std.mem.Allocator) ![]const u8 {
     // Read length
-    const length = try stream.takeInt(u16, .big);
+    const length = try stream.takeInt(u16, net.endianness);
 
     // Read string in utf16 form into buffer
-    const utf16 = try stream.readSliceEndianAlloc(alloc, u16, length, .big);
+    const utf16 = try stream.readSliceEndianAlloc(alloc, u16, length, net.endianness);
     defer alloc.free(utf16);
 
     // Convert to utf8
@@ -19,7 +20,20 @@ pub fn readString(stream: *std.Io.Reader, alloc: std.mem.Allocator) ![]const u8 
     return utf8;
 }
 
-// TODO: writeString and writeStringFast (for ascii)
+/// Writes a string to the stream (length + utf16 bytes) from an ascii string
+/// This version assumes the input string is ascii to simplify conversion to utf16
+pub fn writeStringFast(stream: *std.Io.Writer, ascii: []const u8) !void {
+    // Write length
+    try stream.writeInt(u16, @intCast(ascii.len), net.endianness);
+    // Write each byte converted to u16
+    for (ascii) |char| {
+        try stream.writeInt(u16, @intCast(char), net.endianness);
+    }
+}
+
+// TODO: writeString for full unicode support
+
+// TODO: writeString and writeStringFast tests
 
 test "KiwiPamplemousse" {
     // Taken from a network capture

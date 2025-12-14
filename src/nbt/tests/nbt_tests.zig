@@ -125,6 +125,11 @@ test "decode bigtest.nbt" {
         try std.testing.expectEqualStrings("Hampus", ham.hashmap.get("name").?.tag_string);
         try std.testing.expectEqual(@as(f32, 0.75), ham.hashmap.get("value").?.tag_float);
     }
+
+    // Print and compare against expected snbt
+    const print_buf = try std.fmt.allocPrint(alloc, "{f}", .{nbt_root});
+    defer alloc.free(print_buf);
+    try std.testing.expectEqualStrings(@embedFile("data/bigtest.snbt"), print_buf);
 }
 
 test "loading decompressed level.bin" {

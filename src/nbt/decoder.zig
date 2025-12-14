@@ -19,7 +19,7 @@ const ErrSet = NbtDecoderError || std.Io.Reader.TakeEnumError || std.mem.Allocat
 /// Arrays and names are allocated with alloc and owned by the called, should be freed
 fn decodeNamedTag(data: *std.Io.Reader, alloc: std.mem.Allocator) ErrSet!tags.NamedTag {
     // Read tag id
-    const tag_id = try data.takeEnum(TagId, nbt.nbt_endianness);
+    const tag_id = try data.takeEnum(TagId, nbt.endianness);
 
     // Handle special tag id "end"
     if (tag_id == .tag_end) {
@@ -27,7 +27,7 @@ fn decodeNamedTag(data: *std.Io.Reader, alloc: std.mem.Allocator) ErrSet!tags.Na
     }
 
     // Read name
-    const name_len = try data.takeInt(u16, nbt.nbt_endianness);
+    const name_len = try data.takeInt(u16, nbt.endianness);
     const name = try data.readAlloc(alloc, name_len);
     errdefer alloc.free(name);
 
@@ -59,7 +59,7 @@ fn decodePayload(tag_id: TagId, data: *std.Io.Reader, alloc: std.mem.Allocator) 
 fn decodeByteArray(data: *std.Io.Reader, alloc: std.mem.Allocator) ErrSet!tags.ByteArray {
     // Read length of array
     // Technically len should be a i32, but I don't see a situation where len could be negative
-    const len = try data.takeInt(u32, nbt.nbt_endianness);
+    const len = try data.takeInt(u32, nbt.endianness);
 
     // Alloc and read (and cast pointer to have i8's)
     return @ptrCast(try data.readAlloc(alloc, len));
@@ -69,7 +69,7 @@ fn decodeByteArray(data: *std.Io.Reader, alloc: std.mem.Allocator) ErrSet!tags.B
 /// The result is allocated with the passed allocator and owned by caller
 fn decodeString(data: *std.Io.Reader, alloc: std.mem.Allocator) ErrSet!tags.String {
     // Read length of array
-    const len = try data.takeInt(u16, nbt.nbt_endianness);
+    const len = try data.takeInt(u16, nbt.endianness);
 
     // Alloc and read
     return try data.readAlloc(alloc, len);
@@ -79,11 +79,11 @@ fn decodeString(data: *std.Io.Reader, alloc: std.mem.Allocator) ErrSet!tags.Stri
 /// The result is allocated with the passed allocator and owned by caller
 fn decodeList(data: *std.Io.Reader, alloc: std.mem.Allocator) ErrSet!tags.List {
     // Read tag id for stored type
-    const tag_id = try data.takeEnum(TagId, nbt.nbt_endianness);
+    const tag_id = try data.takeEnum(TagId, nbt.endianness);
 
     // Read length of list
     // Technically len should be a i32, but I don't see a situation where len could be negative
-    const len = try data.takeInt(u32, nbt.nbt_endianness);
+    const len = try data.takeInt(u32, nbt.endianness);
 
     return switch (tag_id) {
         .tag_end => error.InvalidTagId, // Has no payload
@@ -216,5 +216,5 @@ fn takeNumber(comptime NumType: type, data: *std.Io.Reader) ErrSet!NumType {
     };
 
     // Read int in NBT endianness and bitcast
-    return @bitCast(try data.takeInt(ReadType, nbt.nbt_endianness));
+    return @bitCast(try data.takeInt(ReadType, nbt.endianness));
 }

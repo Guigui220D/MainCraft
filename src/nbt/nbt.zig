@@ -7,7 +7,8 @@ pub const TagId = @import("tags/tag_id.zig").TagId;
 pub const tags = @import("tags/tags.zig");
 pub const decoder = @import("decoder.zig");
 
-pub const nbt_endianness = std.builtin.Endian.big;
+pub const endianness = std.builtin.Endian.big;
+pub const nbt_version = 19132;
 
 /// Describes a full NBT tree, with managed memory
 pub const Tree = struct {

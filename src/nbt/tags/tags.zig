@@ -177,6 +177,8 @@ pub const Compound = struct {
             }
 
             // Write named tag
+            try writer.writeAll(elem.key_ptr.*);
+            try writer.writeByte(':');
             try elem.value_ptr.format(writer);
         }
 

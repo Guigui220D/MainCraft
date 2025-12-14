@@ -1,6 +1,7 @@
 //! All clientbound packets and methods to read them
 
 const std = @import("std");
+const net = @import("net.zig");
 const string = @import("string.zig");
 
 pub const BadPacket = struct {
@@ -9,14 +10,39 @@ pub const BadPacket = struct {
     }
 };
 
+pub const Packet0KeepAlive = struct {
+    pub fn receive(_: *std.Io.Reader) !@This() {
+        return .{};
+    }
+};
+
+// Despite having the same name as the serverbound packet
+// And the same field types, they are used differently
+// TODO: should I name it differently?
 pub const Packet1Login = struct {
-    protocol_version: i32,
-    username: []const u8,
+    entity_id: i32,
+    //username: []const u8, // Unused serverbound
     map_seed: i64,
     dimension: i8,
 
-    pub fn receive(_: *std.Io.Reader) !@This() {
-        return error.Unimplemented;
+    pub fn receive(stream: *std.Io.Reader) !@This() {
+        // TEMPORARY (TODO)
+        var buf: [128]u8 = undefined;
+        var fba = std.heap.FixedBufferAllocator.init(&buf);
+        const alloc = fba.allocator();
+
+        const entity_id = try stream.takeInt(i32, net.endianness);
+        _ = try string.readString(stream, alloc);
+        const map_seed = try stream.takeInt(i64, net.endianness);
+        const dimension = try stream.takeInt(i8, net.endianness);
+
+        std.debug.print("Entity id: {}\nMap seed: {x}\nDimension: {}\n", .{ entity_id, map_seed, dimension });
+
+        return .{
+            .entity_id = entity_id,
+            .map_seed = map_seed,
+            .dimension = dimension,
+        };
     }
 };
 
@@ -37,7 +63,7 @@ pub const Packet2Handshake = struct {
 // List of all packet classes to retrieve them via a comptime ID (grouped by 16)
 pub const packet_by_id = [256]type{
     // 0
-    BadPacket,
+    Packet0KeepAlive,
     Packet1Login,
     Packet2Handshake,
     BadPacket,

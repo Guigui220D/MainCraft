@@ -26,6 +26,8 @@ pub fn main() !void {
     var reader = sock.reader(&buf_read);
 
     try net.handshake(&writer.interface);
+    try net.readPacket(&reader.interface);
+    try net.login(&writer.interface);
 
     while (true) {
         try net.readPacket(&reader.interface);

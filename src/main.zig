@@ -28,6 +28,6 @@ pub fn main() !void {
     try net.handshake(&writer.interface);
 
     while (true) {
-        try net.readUncompressedPacket(&reader.interface, alloc);
+        try net.readPacket(&reader.interface);
     }
 }

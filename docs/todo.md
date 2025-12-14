@@ -2,7 +2,8 @@
 
 ## Long term
 
-- [ ] General revers engineering
+- [ ] General client reverse engineering
+- [x] General server reverse engineering
 - [ ] Connecting to server and interpreting network packets including NBT
 - [ ] Authentication code
 - [ ] Make an internal server subset to handle client-side logic
@@ -18,9 +19,10 @@
 ### NBT library
 
 - [x] See what version was effective back then and study it a bit
-- [ ] Look at what decompiled code does
+- [x] Look at what decompiled code does
 - [ ] Write encoder
 - [ ] Write encoder tests
 - [x] Write decoder
-- [ ] Write decoder tests
+- [x] Write decoder tests
+- [ ] Comptime defined decoder
 - [ ] Inspect performance from the decoder

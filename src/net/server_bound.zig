@@ -1,3 +1,5 @@
+//! All serverbound packets and methods to write them
+
 const std = @import("std");
 const net = @import("net.zig");
 

@@ -6,13 +6,13 @@ const string = @import("string.zig");
 const Packets = @import("packets.zig").Packets;
 
 pub const BadPacket = struct {
-    pub fn receive(_: *std.Io.Reader) !@This() {
+    pub fn receive(_: std.mem.Allocator, _: *std.Io.Reader) !@This() {
         return error.BadPacket;
     }
 };
 
 pub const Packet0KeepAlive = struct {
-    pub fn receive(_: *std.Io.Reader) !@This() {
+    pub fn receive(_: std.mem.Allocator, _: *std.Io.Reader) !@This() {
         return .{};
     }
 };
@@ -26,12 +26,8 @@ pub const Packet1Login = struct {
     map_seed: i64,
     dimension: i8,
 
-    pub fn receive(stream: *std.Io.Reader) !@This() {
+    pub fn receive(alloc: std.mem.Allocator, stream: *std.Io.Reader) !@This() {
         // TEMPORARY (TODO)
-        var buf: [128]u8 = undefined;
-        var fba = std.heap.FixedBufferAllocator.init(&buf);
-        const alloc = fba.allocator();
-
         const entity_id = try stream.takeInt(i32, net.endianness);
         _ = try string.readString(stream, alloc);
         const map_seed = try stream.takeInt(i64, net.endianness);
@@ -50,11 +46,8 @@ pub const Packet1Login = struct {
 pub const Packet2Handshake = struct {
     username: []const u8,
 
-    pub fn receive(stream: *std.Io.Reader) !@This() {
+    pub fn receive(alloc: std.mem.Allocator, stream: *std.Io.Reader) !@This() {
         // TEMPORARY (TODO)
-        var buf: [128]u8 = undefined;
-        var fba = std.heap.FixedBufferAllocator.init(&buf);
-        const alloc = fba.allocator();
         const name = try string.readString(stream, alloc);
         std.debug.print("Handshake: \"{s}\"\n", .{name});
         return undefined;
@@ -64,7 +57,7 @@ pub const Packet2Handshake = struct {
 pub const Packet4UpdateTime = struct {
     time: i64,
 
-    pub fn receive(stream: *std.Io.Reader) !@This() {
+    pub fn receive(_: std.mem.Allocator, stream: *std.Io.Reader) !@This() {
         const ret = Packet4UpdateTime{
             .time = try stream.takeInt(i64, net.endianness),
         };
@@ -78,7 +71,7 @@ pub const Packet6SpawnPosition = struct {
     y_position: i32,
     z_position: i32,
 
-    pub fn receive(stream: *std.Io.Reader) !@This() {
+    pub fn receive(_: std.mem.Allocator, stream: *std.Io.Reader) !@This() {
         const ret = Packet6SpawnPosition{
             .x_position = try stream.takeInt(i32, net.endianness),
             .y_position = try stream.takeInt(i32, net.endianness),

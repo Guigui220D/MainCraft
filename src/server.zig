@@ -1,16 +1,24 @@
 const std = @import("std");
 const network = @import("network");
 const net = @import("net");
+const queue = @import("spsc_queue");
 
-pub fn receiverThread(alloc: std.mem.Allocator, stream: *std.Io.Reader) !void {
-    _ = alloc;
-    _ = stream;
+// TODO: use mutex + ringbuffer instead? or std.Io.Queue when 0.16 comes out and network.zig updates?
+const InQueue = queue.SpscQueue(net.InboundPacket, true);
+// const OutQueue = std.Io.Queue(net.OutboundPacket);
+
+pub fn receiverThread(alloc: std.mem.Allocator, in_stream: *std.Io.Reader, in_queue: *InQueue) !void {
+    while (true) {
+        const incoming_packet = try net.readPacket(alloc, in_stream);
+        in_queue.push(incoming_packet);
+    }
 }
 
 pub fn run(alloc: std.mem.Allocator) !void {
     try network.init();
     defer network.deinit();
 
+    // Connect TCP socket to server
     const sock = try network.connectToHost(alloc, "localhost", 25565, .tcp);
     defer sock.close();
 
@@ -20,20 +28,25 @@ pub fn run(alloc: std.mem.Allocator) !void {
     std.debug.print("local: {f}\n", .{local});
     std.debug.print("remote: {f}\n", .{remote});
 
+    // Read/write buffers and interfaces to TCP socket
     var buf_write: [1024]u8 = undefined;
     var writer = sock.writer(&buf_write);
 
     var buf_read: [1024]u8 = undefined;
     var reader = sock.reader(&buf_read);
 
-    //const receiver_thread = try std.Thread.spawn(.{}, receiverThread, .{ alloc, &reader.interface });
-    //receiver_thread.join();
+    // Incoming packet queue
+    const in_queue_buf = try alloc.alloc(net.InboundPacket, 128);
+    defer alloc.free(in_queue_buf);
+    var in_queue = try InQueue.initCapacity(alloc, 128);
+
+    // Start thread
+    // TODO: use io.Threaded later?
+    var receiver_thread = try std.Thread.spawn(.{}, receiverThread, .{ alloc, &reader.interface, &in_queue });
 
     try net.handshake(&writer.interface);
-    try net.readPacket(&reader.interface);
-    try net.login(&writer.interface);
 
-    while (true) {
-        try net.readPacket(&reader.interface);
-    }
+    while (true) {}
+
+    receiver_thread.join();
 }

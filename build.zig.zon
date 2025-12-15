@@ -36,6 +36,10 @@
             .url = "https://github.com/ikskuh/zig-network/archive/7947237eec317d9458897f82089f343a05450c2b.tar.gz",
             .hash = "network-0.1.0-Pm-Agl8xAQBmkwohveGOfTk4zQnuqDs0Ptfbms4KP5Ce",
         },
+        .spsc_queue = .{
+            .url = "https://github.com/freref/spsc-queue/archive/3ce8a39c53b026ef42eb569e66bc04c6356869e8.tar.gz",
+            .hash = "spsc_queue-0.0.0-AVEoh1VJAAAANyL-T7uKYvwDBTU9R0i42Avs_Bp-43wr",
+        },
     },
     .paths = .{
         "build.zig",

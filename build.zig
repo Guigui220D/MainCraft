@@ -6,6 +6,7 @@ pub fn build(b: *std.Build) void {
 
     // Dependencies
     const network_dep = b.dependency("network", .{});
+    const spsc_queue_dep = b.dependency("spsc_queue", .{});
 
     // Internal modules
     const nbt_mod = b.addModule("nbt", .{
@@ -29,6 +30,7 @@ pub fn build(b: *std.Build) void {
                 .{ .name = "nbt", .module = nbt_mod },
                 .{ .name = "net", .module = net_mod },
                 .{ .name = "network", .module = network_dep.module("network") },
+                .{ .name = "spsc_queue", .module = spsc_queue_dep.module("spsc_queue") },
             },
         }),
     });

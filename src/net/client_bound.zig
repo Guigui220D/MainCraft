@@ -88,6 +88,41 @@ pub const Packet6SpawnPosition = struct {
     }
 };
 
+pub const Packet24MobSpawn = struct {
+    entity_id: i32,
+    entity_type: i8,
+    x_position: i32,
+    y_position: i32,
+    z_position: i32,
+    yaw: i8,
+    pitch: i8,
+
+    and_more: void,
+
+    pub fn receive(_: std.mem.Allocator, stream: *std.Io.Reader) !@This() {
+        const ret = Packet24MobSpawn{
+            .entity_id = try stream.takeInt(i32, net.endianness),
+            .entity_type = try stream.takeInt(i8, net.endianness),
+            .x_position = try stream.takeInt(i32, net.endianness),
+            .y_position = try stream.takeInt(i32, net.endianness),
+            .z_position = try stream.takeInt(i32, net.endianness),
+            .yaw = try stream.takeInt(i8, net.endianness),
+            .pitch = try stream.takeInt(i8, net.endianness),
+            .and_more = {}, // placeholder
+        };
+
+        // TODO: read supplementary data for real
+        // TEMPORARY: discarding all entity data
+
+        while (true) {
+            // 127 is the end marker
+            if (try stream.takeByte() == 127)
+                break;
+        }
+        return ret;
+    }
+};
+
 // Union of any inbound packet
 pub const InboundPacket = union(Packets) {
     keep_alive_0: Packet0KeepAlive,
@@ -114,7 +149,7 @@ pub const InboundPacket = union(Packets) {
     pickup_spawn_21: BadPacket,
     collect_22: BadPacket,
     vehicle_spawn_23: BadPacket,
-    mob_spawn_24: BadPacket,
+    mob_spawn_24: Packet24MobSpawn,
     entity_painting_25: BadPacket,
     unused_26: BadPacket,
     position_27: BadPacket,

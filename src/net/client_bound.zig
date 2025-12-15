@@ -60,6 +60,34 @@ pub const Packet2Handshake = struct {
     }
 };
 
+pub const Packet4UpdateTime = struct {
+    time: i64,
+
+    pub fn receive(stream: *std.Io.Reader) !@This() {
+        const ret = Packet4UpdateTime{
+            .time = try stream.takeInt(i64, net.endianness),
+        };
+        std.debug.print("Time: {any}\n", .{ret});
+        return ret;
+    }
+};
+
+pub const Packet6SpawnPosition = struct {
+    x_position: i32,
+    y_position: i32,
+    z_position: i32,
+
+    pub fn receive(stream: *std.Io.Reader) !@This() {
+        const ret = Packet6SpawnPosition{
+            .x_position = try stream.takeInt(i32, net.endianness),
+            .y_position = try stream.takeInt(i32, net.endianness),
+            .z_position = try stream.takeInt(i32, net.endianness),
+        };
+        std.debug.print("Spawn: {any}\n", .{ret});
+        return ret;
+    }
+};
+
 // List of all packet classes to retrieve them via a comptime ID (grouped by 16)
 pub const packet_by_id = [256]type{
     // 0
@@ -67,9 +95,9 @@ pub const packet_by_id = [256]type{
     Packet1Login,
     Packet2Handshake,
     BadPacket,
+    Packet4UpdateTime,
     BadPacket,
-    BadPacket,
-    BadPacket,
+    Packet6SpawnPosition,
     BadPacket,
     BadPacket,
     BadPacket,

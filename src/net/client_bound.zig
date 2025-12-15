@@ -9,16 +9,12 @@ pub const BadPacket = struct {
     pub fn receive(_: std.mem.Allocator, _: *std.Io.Reader) !@This() {
         return error.BadPacket;
     }
-
-    pub fn deinit(_: @This(), _: std.mem.Allocator) void {}
 };
 
 pub const Packet0KeepAlive = struct {
     pub fn receive(_: std.mem.Allocator, _: *std.Io.Reader) !@This() {
         return .{};
     }
-
-    pub fn deinit(_: @This(), _: std.mem.Allocator) void {}
 };
 
 // Despite having the same name as the serverbound packet
@@ -46,8 +42,6 @@ pub const Packet1Login = struct {
             .dimension = dimension,
         };
     }
-
-    pub fn deinit(_: @This(), _: std.mem.Allocator) void {}
 };
 
 pub const Packet2Handshake = struct {
@@ -77,8 +71,6 @@ pub const Packet4UpdateTime = struct {
             .time = try stream.takeInt(i64, net.endianness),
         };
     }
-
-    pub fn deinit(_: @This(), _: std.mem.Allocator) void {}
 };
 
 pub const Packet6SpawnPosition = struct {
@@ -94,8 +86,6 @@ pub const Packet6SpawnPosition = struct {
             .z_position = try stream.takeInt(i32, net.endianness),
         };
     }
-
-    pub fn deinit(_: @This(), _: std.mem.Allocator) void {}
 };
 
 // Union of any inbound packet

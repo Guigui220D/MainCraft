@@ -1,10 +1,11 @@
 # TODO
 
-## Long term
+## Roadmap
 
 - [ ] General client reverse engineering
 - [x] General server reverse engineering
-- [ ] Connecting to server and interpreting network packets including NBT
+- [x] Handshaking and offline login
+- [ ] Accept all packets to keep a working stream
 - [ ] Authentication code
 - [ ] Make an internal server subset to handle client-side logic
 - [ ] Render the world and its entities

@@ -67,9 +67,14 @@ pub fn run(alloc: std.mem.Allocator) !void {
                 },
             }
 
-            // TODO: Is this ok? This probably generates a lot of branches
+            // Deinit if there is a deinit function
+            // TODO: does this generate lots of branches?
             switch (packet) {
-                inline else => |p| p.deinit(alloc),
+                inline else => |p| {
+                    if (@hasDecl(@TypeOf(p), "deinit")) {
+                        p.deinit(alloc);
+                    }
+                },
             }
         }
     }

@@ -20,6 +20,15 @@ pub fn readString(stream: *std.Io.Reader, alloc: std.mem.Allocator) ![]const u8 
     return utf8;
 }
 
+/// Discards a string (length + utf16 bytes)
+/// Used when a string field is unused or useless
+pub fn discardString(stream: *std.Io.Reader) !void {
+    // Read length
+    const length = try stream.takeInt(u16, net.endianness);
+    // Toss string bytes
+    stream.toss(@sizeOf(u16) * length);
+}
+
 /// Writes a string to the stream (length + utf16 bytes) from an ascii string
 /// This version assumes the input string is ascii to simplify conversion to utf16
 pub fn writeStringFast(stream: *std.Io.Writer, ascii: []const u8) !void {

@@ -9,12 +9,16 @@ pub const BadPacket = struct {
     pub fn receive(_: std.mem.Allocator, _: *std.Io.Reader) !@This() {
         return error.BadPacket;
     }
+
+    pub fn deinit(_: @This(), _: std.mem.Allocator) void {}
 };
 
 pub const Packet0KeepAlive = struct {
     pub fn receive(_: std.mem.Allocator, _: *std.Io.Reader) !@This() {
         return .{};
     }
+
+    pub fn deinit(_: @This(), _: std.mem.Allocator) void {}
 };
 
 // Despite having the same name as the serverbound packet
@@ -26,14 +30,15 @@ pub const Packet1Login = struct {
     map_seed: i64,
     dimension: i8,
 
-    pub fn receive(alloc: std.mem.Allocator, stream: *std.Io.Reader) !@This() {
-        // TEMPORARY (TODO)
+    pub fn receive(_: std.mem.Allocator, stream: *std.Io.Reader) !@This() {
+        // Entity ID
         const entity_id = try stream.takeInt(i32, net.endianness);
-        _ = try string.readString(stream, alloc);
+        // Unused string
+        try string.discardString(stream);
+        // Map seed
         const map_seed = try stream.takeInt(i64, net.endianness);
+        // Dimension
         const dimension = try stream.takeInt(i8, net.endianness);
-
-        std.debug.print("Entity id: {}\nMap seed: {x}\nDimension: {}\n", .{ entity_id, map_seed, dimension });
 
         return .{
             .entity_id = entity_id,
@@ -41,16 +46,25 @@ pub const Packet1Login = struct {
             .dimension = dimension,
         };
     }
+
+    pub fn deinit(_: @This(), _: std.mem.Allocator) void {}
 };
 
 pub const Packet2Handshake = struct {
     username: []const u8,
 
     pub fn receive(alloc: std.mem.Allocator, stream: *std.Io.Reader) !@This() {
-        // TEMPORARY (TODO)
+        // Get username
         const name = try string.readString(stream, alloc);
-        std.debug.print("Handshake: \"{s}\"\n", .{name});
-        return undefined;
+        errdefer alloc.free(name);
+
+        return .{
+            .username = name,
+        };
+    }
+
+    pub fn deinit(self: @This(), alloc: std.mem.Allocator) void {
+        alloc.free(self.username);
     }
 };
 
@@ -58,12 +72,13 @@ pub const Packet4UpdateTime = struct {
     time: i64,
 
     pub fn receive(_: std.mem.Allocator, stream: *std.Io.Reader) !@This() {
-        const ret = Packet4UpdateTime{
+        return .{
+            // Read time
             .time = try stream.takeInt(i64, net.endianness),
         };
-        std.debug.print("Time: {any}\n", .{ret});
-        return ret;
     }
+
+    pub fn deinit(_: @This(), _: std.mem.Allocator) void {}
 };
 
 pub const Packet6SpawnPosition = struct {
@@ -72,14 +87,15 @@ pub const Packet6SpawnPosition = struct {
     z_position: i32,
 
     pub fn receive(_: std.mem.Allocator, stream: *std.Io.Reader) !@This() {
-        const ret = Packet6SpawnPosition{
+        return .{
+            // Read spawn coordinates
             .x_position = try stream.takeInt(i32, net.endianness),
             .y_position = try stream.takeInt(i32, net.endianness),
             .z_position = try stream.takeInt(i32, net.endianness),
         };
-        std.debug.print("Spawn: {any}\n", .{ret});
-        return ret;
     }
+
+    pub fn deinit(_: @This(), _: std.mem.Allocator) void {}
 };
 
 // Union of any inbound packet

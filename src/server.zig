@@ -11,6 +11,8 @@ pub fn receiverThread(alloc: std.mem.Allocator, in_stream: *std.Io.Reader, in_qu
     while (true) {
         const incoming_packet = try net.readPacket(alloc, in_stream);
         in_queue.push(incoming_packet);
+
+        // TODO: handle locally packets that are very simple (keep alive, set time)
     }
 }
 
@@ -39,14 +41,39 @@ pub fn run(alloc: std.mem.Allocator) !void {
     const in_queue_buf = try alloc.alloc(net.InboundPacket, 128);
     defer alloc.free(in_queue_buf);
     var in_queue = try InQueue.initCapacity(alloc, 128);
+    defer in_queue.deinit();
 
     // Start thread
     // TODO: use io.Threaded later?
     var receiver_thread = try std.Thread.spawn(.{}, receiverThread, .{ alloc, &reader.interface, &in_queue });
 
+    // Initiate handshake
     try net.handshake(&writer.interface);
 
-    while (true) {}
+    // Temporary: run the server for only 3 seconds
+    const start_timestamp = std.time.milliTimestamp();
+    while (std.time.milliTimestamp() - start_timestamp < 3000) {
+        // Pop new packet
+        if (in_queue.front()) |new_packet| {
+            const packet = new_packet.*;
+            in_queue.pop();
 
+            switch (packet) {
+                .handshake_2 => {
+                    try net.login(&writer.interface);
+                },
+                else => {
+                    std.debug.print("{any}\n", .{packet});
+                },
+            }
+
+            // TODO: Is this ok? This probably generates a lot of branches
+            switch (packet) {
+                inline else => |p| p.deinit(alloc),
+            }
+        }
+    }
+
+    // TODO: stop condition (this only works right now as the thread crashes from bad packet)
     receiver_thread.join();
 }

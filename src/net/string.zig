@@ -93,6 +93,25 @@ fn encodeDecodeTest(string: []const u8, comptime is_ascii: bool) !void {
     try std.testing.expectEqualStrings(string, result);
 }
 
+/// Checks if a username is valid (returns an error otherwise)
+pub fn checkUsername(name: []const u8) !void {
+    // Check Name Len
+    if (name.len < 3)
+        return error.UsernameTooShort;
+    if (name.len > 16)
+        return error.UsernameTooLong;
+    // Check name characters
+    for (name) |char| {
+        switch (char) {
+            'a'...'z' => continue,
+            'A'...'Z' => continue,
+            '0'...'9' => continue,
+            '_' => continue,
+            else => return error.InvalidUsernameCharacter,
+        }
+    }
+}
+
 test "encode and decode ascii" {
     try encodeDecodeTest("hello this is a test!", true);
     try encodeDecodeTest("", true);

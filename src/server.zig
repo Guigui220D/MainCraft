@@ -8,9 +8,11 @@ const InQueue = queue.SpscQueue(net.InboundPacket, true);
 
 // Running flag
 var server_running: std.atomic.Value(bool) = undefined;
+var game_time: std.atomic.Value(i64) = undefined;
 
 pub fn receiverThread(alloc: std.mem.Allocator, in_stream: *std.Io.Reader, in_queue: *InQueue) !void {
     while (server_running.load(.acquire)) {
+        // Read packet
         const incoming_packet = net.readPacket(alloc, in_stream) catch |e| {
             server_running.store(false, .release);
             std.debug.print("{}\n", .{e});
@@ -19,16 +21,21 @@ pub fn receiverThread(alloc: std.mem.Allocator, in_stream: *std.Io.Reader, in_qu
             }
             continue;
         };
-        in_queue.push(incoming_packet);
+
+        // Enqueue or handle locally
+        switch (incoming_packet) {
+            .update_time_4 => |time| game_time.store(time.time, .unordered),
+            else => in_queue.push(incoming_packet),
+        }
 
         // TEMPORARY: helps with seeing the prints in the right order
         std.Thread.sleep(1000);
-        // TODO: handle locally packets that are very simple (keep alive, set time)
     }
 }
 
 pub fn run(alloc: std.mem.Allocator) !void {
     server_running = .init(true);
+    game_time = .init(undefined);
 
     try network.init();
     defer network.deinit();
@@ -71,7 +78,11 @@ pub fn run(alloc: std.mem.Allocator) !void {
 
             switch (packet) {
                 .handshake_2 => {
+                    std.debug.print("Shaked hands!\n", .{});
                     try net.login(&writer.interface);
+                },
+                .login_1 => |login| {
+                    std.debug.print("Login successful! {any}\n", .{login});
                 },
                 .kick_disconnect_255 => |kick| {
                     std.debug.print("Kicked! Reason: \"{s}\"\n", .{kick.reason});
@@ -93,6 +104,8 @@ pub fn run(alloc: std.mem.Allocator) !void {
                 },
             }
         }
+
+        // TODO: watch time
     }
 
     // Wait for receiver thread to stop too

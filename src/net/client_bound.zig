@@ -5,7 +5,8 @@ const net = @import("net.zig");
 const string = @import("string.zig");
 const Packets = @import("packets.zig").Packets;
 
-fn ErrorPacket(comptime err: anytype) type {
+/// Packet throwing an error when attempting to interpret
+fn ErrorPacket(comptime err: anyerror) type {
     return struct {
         pub fn receive(_: std.mem.Allocator, _: *std.Io.Reader) !@This() {
             return err;
@@ -13,9 +14,12 @@ fn ErrorPacket(comptime err: anytype) type {
     };
 }
 
+/// Illegal packet
 const BadPacket = ErrorPacket(error.BadPacket);
+/// Unimplemented packet
 const UnimplementedPacket = ErrorPacket(error.Unimplemented);
 
+/// Debug packet that prints some amount of data and then throws an error
 fn PacketDebug(size: comptime_int) type {
     return struct {
         pub fn receive(_: std.mem.Allocator, stream: *std.Io.Reader) !@This() {
@@ -29,241 +33,15 @@ fn PacketDebug(size: comptime_int) type {
     };
 }
 
-// TODO: move these in their own folder/files
-
-pub const Packet0KeepAlive = struct {
-    pub fn receive(_: std.mem.Allocator, _: *std.Io.Reader) !@This() {
-        return .{};
-    }
-};
-
-// Despite having the same name as the serverbound packet
-// And the same field types, they are used differently
-// TODO: should I name it differently?
-pub const Packet1Login = struct {
-    entity_id: i32,
-    //username: []const u8, // Unused serverbound
-    map_seed: i64,
-    dimension: i8,
-
-    pub fn receive(_: std.mem.Allocator, stream: *std.Io.Reader) !@This() {
-        // Entity ID
-        const entity_id = try stream.takeInt(i32, net.endianness);
-        // Unused string
-        try string.discardString(stream, 16);
-        // Map seed
-        const map_seed = try stream.takeInt(i64, net.endianness);
-        // Dimension
-        const dimension = try stream.takeInt(i8, net.endianness);
-
-        return .{
-            .entity_id = entity_id,
-            .map_seed = map_seed,
-            .dimension = dimension,
-        };
-    }
-};
-
-pub const Packet2Handshake = struct {
-    username: []const u8,
-
-    pub fn receive(alloc: std.mem.Allocator, stream: *std.Io.Reader) !@This() {
-        // Get username
-        const name = try string.readString(stream, alloc, 32);
-        errdefer alloc.free(name);
-
-        return .{
-            .username = name,
-        };
-    }
-
-    pub fn deinit(self: @This(), alloc: std.mem.Allocator) void {
-        alloc.free(self.username);
-    }
-};
-
-pub const Packet4UpdateTime = struct {
-    time: i64,
-
-    pub fn receive(_: std.mem.Allocator, stream: *std.Io.Reader) !@This() {
-        return .{
-            // Read time
-            .time = try stream.takeInt(i64, net.endianness),
-        };
-    }
-};
-
-pub const Packet6SpawnPosition = struct {
-    x_position: i32,
-    y_position: i32,
-    z_position: i32,
-
-    pub fn receive(_: std.mem.Allocator, stream: *std.Io.Reader) !@This() {
-        return .{
-            // Read spawn coordinates
-            .x_position = try stream.takeInt(i32, net.endianness),
-            .y_position = try stream.takeInt(i32, net.endianness),
-            .z_position = try stream.takeInt(i32, net.endianness),
-        };
-    }
-};
-
-pub const Packet21PickupSpawn = struct {
-    entity_id: i32,
-    x_position: i32,
-    y_position: i32,
-    z_position: i32,
-    rotation: i8,
-    pitch: i8,
-    roll: i8,
-    item_id: i16,
-    stack_size: i8,
-    item_dmg: i16,
-
-    pub fn receive(_: std.mem.Allocator, stream: *std.Io.Reader) !@This() {
-        return .{
-            // Entity id
-            .entity_id = try stream.takeInt(i32, net.endianness),
-            .item_id = try stream.takeInt(i16, net.endianness),
-            .stack_size = try stream.takeInt(i8, net.endianness),
-            // Stack
-            .item_dmg = try stream.takeInt(i16, net.endianness),
-            // Position
-            .x_position = try stream.takeInt(i32, net.endianness),
-            .y_position = try stream.takeInt(i32, net.endianness),
-            .z_position = try stream.takeInt(i32, net.endianness),
-            // Rotation
-            .rotation = try stream.takeInt(i8, net.endianness),
-            .pitch = try stream.takeInt(i8, net.endianness),
-            .roll = try stream.takeInt(i8, net.endianness),
-        };
-    }
-};
-
-pub const Packet24MobSpawn = struct {
-    entity_id: i32,
-    entity_type: i8,
-    x_position: i32,
-    y_position: i32,
-    z_position: i32,
-    yaw: i8,
-    pitch: i8,
-
-    and_more: void,
-
-    pub fn receive(alloc: std.mem.Allocator, stream: *std.Io.Reader) !@This() {
-        const ret = Packet24MobSpawn{
-            .entity_id = try stream.takeInt(i32, net.endianness),
-            .entity_type = try stream.takeInt(i8, net.endianness),
-            .x_position = try stream.takeInt(i32, net.endianness),
-            .y_position = try stream.takeInt(i32, net.endianness),
-            .z_position = try stream.takeInt(i32, net.endianness),
-            .yaw = try stream.takeInt(i8, net.endianness),
-            .pitch = try stream.takeInt(i8, net.endianness),
-            .and_more = {}, // placeholder
-        };
-
-        // TODO: keep data for real
-        // TEMPORARY
-
-        while (true) {
-            const byte = try stream.takeInt(u8, net.endianness);
-
-            // 127 is the end marker
-            if (byte == 127)
-                break;
-
-            const b = (byte & 224) >> 5;
-            switch (b) {
-                0 => {
-                    const n = try stream.takeInt(i8, net.endianness);
-                    _ = n; //std.debug.print("Byte: {}\n", .{n});
-                },
-                1 => {
-                    const n = try stream.takeInt(i16, net.endianness);
-                    _ = n; // std.debug.print("Short: {}\n", .{n});
-                },
-                2 => {
-                    const n = try stream.takeInt(i32, net.endianness);
-                    _ = n; //std.debug.print("Int: {}\n", .{n});
-                },
-                3 => {
-                    const n: f32 = @bitCast(try stream.takeInt(i32, net.endianness));
-                    _ = n; //std.debug.print("Float: {}\n", .{n});
-                },
-                4 => {
-                    const str = try string.readString(stream, alloc, 64);
-                    defer alloc.free(str);
-                    //std.debug.print("String: {s}\n", .{str});
-                },
-                5 => {
-                    const item_id = try stream.takeInt(i16, net.endianness);
-                    const stack_size = try stream.takeInt(i8, net.endianness);
-                    const item_dmg = try stream.takeInt(i16, net.endianness);
-                    _ = item_id;
-                    _ = stack_size;
-                    _ = item_dmg;
-                    //std.debug.print("Item: {},{},{}\n", .{ item_id, stack_size, item_dmg });
-                },
-                6 => {
-                    const x = try stream.takeInt(i32, net.endianness);
-                    const y = try stream.takeInt(i32, net.endianness);
-                    const z = try stream.takeInt(i32, net.endianness);
-                    _ = x;
-                    _ = y;
-                    _ = z;
-                    //std.debug.print("Coords: {},{},{}\n", .{ x, y, z });
-                },
-                else => std.debug.print("Unexpected byte {}\n", .{b}),
-            }
-        }
-
-        return ret;
-    }
-};
-
-pub const Packet28EntityVelocity = struct {
-    entity_id: i32,
-    x_motion: i16,
-    y_motion: i16,
-    z_motion: i16,
-
-    pub fn receive(_: std.mem.Allocator, stream: *std.Io.Reader) !@This() {
-        return .{
-            // Entity Id
-            .entity_id = try stream.takeInt(i32, net.endianness),
-            // Read motion
-            .x_motion = try stream.takeInt(i16, net.endianness),
-            .y_motion = try stream.takeInt(i16, net.endianness),
-            .z_motion = try stream.takeInt(i16, net.endianness),
-        };
-    }
-};
-
-pub const Packet255KickDisconnect = struct {
-    reason: []const u8,
-
-    pub fn receive(alloc: std.mem.Allocator, stream: *std.Io.Reader) !@This() {
-        return .{
-            // Reason
-            .reason = try string.readString(stream, alloc, 100),
-        };
-    }
-
-    pub fn deinit(self: @This(), alloc: std.mem.Allocator) void {
-        alloc.free(self.reason);
-    }
-};
-
-// Union of any inbound packet
+/// Union of any inbound packet
 pub const InboundPacket = union(Packets) {
-    keep_alive_0: Packet0KeepAlive,
-    login_1: Packet1Login,
-    handshake_2: Packet2Handshake,
+    keep_alive_0: @import("client_bound/Packet0KeepAlive.zig"),
+    login_1: @import("client_bound/Packet1Login.zig"),
+    handshake_2: @import("client_bound/Packet2Handshake.zig"),
     chat_3: UnimplementedPacket,
-    update_time_4: Packet4UpdateTime,
+    update_time_4: @import("client_bound/Packet4UpdateTime.zig"),
     player_inventory_5: UnimplementedPacket,
-    spawn_position_6: Packet6SpawnPosition,
+    spawn_position_6: @import("client_bound/Packet6SpawnPosition.zig"),
     use_entity_7: UnimplementedPacket,
     update_health_8: UnimplementedPacket,
     respawn_9: UnimplementedPacket,
@@ -278,14 +56,14 @@ pub const InboundPacket = union(Packets) {
     animation_18: UnimplementedPacket,
     entity_action_19: UnimplementedPacket,
     named_entity_spawn_20: UnimplementedPacket,
-    pickup_spawn_21: Packet21PickupSpawn,
+    pickup_spawn_21: @import("client_bound/Packet21PickupSpawn.zig"),
     collect_22: UnimplementedPacket,
     vehicle_spawn_23: UnimplementedPacket,
-    mob_spawn_24: Packet24MobSpawn,
+    mob_spawn_24: @import("client_bound/Packet24MobSpawn.zig"),
     entity_painting_25: UnimplementedPacket,
     unused_26: BadPacket,
     position_27: UnimplementedPacket,
-    entity_velocity_28: Packet28EntityVelocity,
+    entity_velocity_28: @import("client_bound/Packet28EntityVelocity.zig"),
     destroy_entity_29: UnimplementedPacket,
     entity_30: UnimplementedPacket,
     rel_entity_move_31: UnimplementedPacket,
@@ -512,5 +290,5 @@ pub const InboundPacket = union(Packets) {
     unused_252: BadPacket,
     unused_253: BadPacket,
     unused_254: BadPacket,
-    kick_disconnect_255: Packet255KickDisconnect,
+    kick_disconnect_255: @import("client_bound/Packet255KickDisconnect.zig"),
 };

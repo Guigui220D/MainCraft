@@ -3,7 +3,6 @@ const network = @import("network");
 const net = @import("net");
 const queue = @import("spsc_queue");
 
-// TODO: use mutex + ringbuffer instead? or std.Io.Queue when 0.16 comes out and network.zig updates?
 const InQueue = queue.SpscQueue(net.InboundPacket, true);
 // const OutQueue = std.Io.Queue(net.OutboundPacket);
 
@@ -12,6 +11,8 @@ pub fn receiverThread(alloc: std.mem.Allocator, in_stream: *std.Io.Reader, in_qu
         const incoming_packet = try net.readPacket(alloc, in_stream);
         in_queue.push(incoming_packet);
 
+        // TEMPORARY: helps with seeing the prints in the right order
+        std.Thread.sleep(1000);
         // TODO: handle locally packets that are very simple (keep alive, set time)
     }
 }

@@ -5,9 +5,11 @@ const net = @import("net.zig");
 
 /// Reads a string from the stream (length + utf16 bytes) into a utf8 string
 /// Caller owns the string (free with alloc)
-pub fn readString(stream: *std.Io.Reader, alloc: std.mem.Allocator) ![]const u8 {
+pub fn readString(stream: *std.Io.Reader, alloc: std.mem.Allocator, max_length: u16) ![]const u8 {
     // Read length
     const length = try stream.takeInt(u16, net.endianness);
+    if (length > max_length)
+        return error.StringTooLong;
 
     // Read string in utf16 form into buffer
     const utf16 = try stream.readSliceEndianAlloc(alloc, u16, length, net.endianness);
@@ -22,9 +24,11 @@ pub fn readString(stream: *std.Io.Reader, alloc: std.mem.Allocator) ![]const u8 
 
 /// Discards a string (length + utf16 bytes)
 /// Used when a string field is unused or useless
-pub fn discardString(stream: *std.Io.Reader) !void {
+pub fn discardString(stream: *std.Io.Reader, max_length: u16) !void {
     // Read length
     const length = try stream.takeInt(u16, net.endianness);
+    if (length > max_length)
+        return error.StringTooLong;
     // Toss string bytes
     stream.toss(@sizeOf(u16) * length);
 }
@@ -82,7 +86,7 @@ fn encodeDecodeTest(string: []const u8, comptime is_ascii: bool) !void {
     // TODO: is this the right way to access the fixed writer string?
     var reader = std.Io.Reader.fixed(buf[0..writer.end]);
     // Read back
-    const result = try readString(&reader, alloc);
+    const result = try readString(&reader, alloc, 128);
     defer alloc.free(result);
 
     // Compare results
@@ -108,7 +112,7 @@ test "KiwiPamplemousse" {
     const bytes = [_]u8{ 0x00, 0x10, 0x00, 0x4b, 0x00, 0x69, 0x00, 0x77, 0x00, 0x69, 0x00, 0x50, 0x00, 0x61, 0x00, 0x6d, 0x00, 0x70, 0x00, 0x6c, 0x00, 0x65, 0x00, 0x6d, 0x00, 0x6f, 0x00, 0x75, 0x00, 0x73, 0x00, 0x73, 0x00, 0x65, undefined, undefined, undefined };
     var reader = std.Io.Reader.fixed(&bytes);
 
-    const string = try readString(&reader, std.testing.allocator);
+    const string = try readString(&reader, std.testing.allocator, 100);
     defer std.testing.allocator.free(string);
 
     try std.testing.expectEqualStrings("KiwiPamplemousse", string);

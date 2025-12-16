@@ -6,9 +6,19 @@ const queue = @import("spsc_queue");
 const InQueue = queue.SpscQueue(net.InboundPacket, true);
 // const OutQueue = std.Io.Queue(net.OutboundPacket);
 
+// Running flag
+var server_running: std.atomic.Value(bool) = undefined;
+
 pub fn receiverThread(alloc: std.mem.Allocator, in_stream: *std.Io.Reader, in_queue: *InQueue) !void {
-    while (true) {
-        const incoming_packet = try net.readPacket(alloc, in_stream);
+    while (server_running.load(.acquire)) {
+        const incoming_packet = net.readPacket(alloc, in_stream) catch |e| {
+            server_running.store(false, .release);
+            std.debug.print("{}\n", .{e});
+            if (@errorReturnTrace()) |trace| {
+                std.debug.dumpStackTrace(trace.*);
+            }
+            continue;
+        };
         in_queue.push(incoming_packet);
 
         // TEMPORARY: helps with seeing the prints in the right order
@@ -18,6 +28,8 @@ pub fn receiverThread(alloc: std.mem.Allocator, in_stream: *std.Io.Reader, in_qu
 }
 
 pub fn run(alloc: std.mem.Allocator) !void {
+    server_running = .init(true);
+
     try network.init();
     defer network.deinit();
 
@@ -51,9 +63,7 @@ pub fn run(alloc: std.mem.Allocator) !void {
     // Initiate handshake
     try net.handshake(&writer.interface);
 
-    // Temporary: run the server for only 3 seconds
-    const start_timestamp = std.time.milliTimestamp();
-    while (std.time.milliTimestamp() - start_timestamp < 3000) {
+    while (server_running.load(.acquire)) {
         // Pop new packet
         if (in_queue.front()) |new_packet| {
             const packet = new_packet.*;
@@ -62,6 +72,11 @@ pub fn run(alloc: std.mem.Allocator) !void {
             switch (packet) {
                 .handshake_2 => {
                     try net.login(&writer.interface);
+                },
+                .kick_disconnect_255 => |kick| {
+                    std.debug.print("Kicked! Reason: \"{s}\"\n", .{kick.reason});
+                    // Stop client
+                    server_running.store(false, .release);
                 },
                 else => {
                     std.debug.print("{any}\n", .{packet});
@@ -80,6 +95,6 @@ pub fn run(alloc: std.mem.Allocator) !void {
         }
     }
 
-    // TODO: stop condition (this only works right now as the thread crashes from bad packet)
+    // Wait for receiver thread to stop too
     receiver_thread.join();
 }

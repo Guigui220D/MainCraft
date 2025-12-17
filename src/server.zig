@@ -25,6 +25,12 @@ pub fn receiverThread(alloc: std.mem.Allocator, in_stream: *std.Io.Reader, in_qu
         // Enqueue or handle locally
         switch (incoming_packet) {
             .update_time_4 => |time| game_time.store(time.time, .unordered),
+            .kick_disconnect_255 => |_| {
+                // Stop server
+                server_running.store(false, .release);
+                // Push anyways (for message)
+                in_queue.push(incoming_packet);
+            },
             else => in_queue.push(incoming_packet),
         }
 

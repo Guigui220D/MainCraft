@@ -3,6 +3,8 @@ const network = @import("network");
 const net = @import("net");
 const queue = @import("spsc_queue");
 
+// TODO: better logging (detailed full packet list print?)
+
 const InQueue = queue.SpscQueue(net.InboundPacket, true);
 // const OutQueue = std.Io.Queue(net.OutboundPacket);
 
@@ -83,12 +85,15 @@ pub fn run(alloc: std.mem.Allocator) !void {
             in_queue.pop();
 
             switch (packet) {
+                .login_1 => |login| {
+                    std.debug.print("Login successful! {any}\n", .{login});
+                },
                 .handshake_2 => {
                     std.debug.print("Shaked hands!\n", .{});
                     try net.login(&writer.interface);
                 },
-                .login_1 => |login| {
-                    std.debug.print("Login successful! {any}\n", .{login});
+                .chat_3 => |chat| {
+                    std.debug.print("{s}\n", .{chat.message});
                 },
                 .kick_disconnect_255 => |kick| {
                     std.debug.print("Kicked! Reason: \"{s}\"\n", .{kick.reason});

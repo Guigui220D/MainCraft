@@ -14,9 +14,17 @@ pub fn build(b: *std.Build) void {
         .target = target,
     });
 
+    const inv_mod = b.addModule("inventory", .{
+        .root_source_file = b.path("src/inventory/inventory.zig"),
+        .target = target,
+    });
+
     const net_mod = b.addModule("net", .{
         .root_source_file = b.path("src/net/net.zig"),
         .target = target,
+        .imports = &.{
+            .{ .name = "inventory", .module = inv_mod },
+        },
     });
 
     // Client executable
@@ -27,8 +35,11 @@ pub fn build(b: *std.Build) void {
             .target = target,
             .optimize = optimize,
             .imports = &.{
+                // Internal
                 .{ .name = "nbt", .module = nbt_mod },
                 .{ .name = "net", .module = net_mod },
+                .{ .name = "inventory", .module = inv_mod },
+                // Dependencies
                 .{ .name = "network", .module = network_dep.module("network") },
                 .{ .name = "spsc_queue", .module = spsc_queue_dep.module("spsc_queue") },
             },
@@ -61,6 +72,11 @@ pub fn build(b: *std.Build) void {
     });
     const run_net_tests = b.addRunArtifact(net_mod_tests);
 
+    const inv_mod_tests = b.addTest(.{
+        .root_module = inv_mod,
+    });
+    const run_inv_tests = b.addRunArtifact(inv_mod_tests);
+
     // Client tests
     const exe_tests = b.addTest(.{
         .root_module = exe.root_module,
@@ -68,8 +84,10 @@ pub fn build(b: *std.Build) void {
     const run_exe_tests = b.addRunArtifact(exe_tests);
 
     // All tests step
+    // TODO: allow running tests separately for each submodule
     const test_step = b.step("test", "Run tests");
     test_step.dependOn(&run_nbt_tests.step);
     test_step.dependOn(&run_net_tests.step);
+    test_step.dependOn(&run_inv_tests.step);
     test_step.dependOn(&run_exe_tests.step);
 }

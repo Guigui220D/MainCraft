@@ -17,16 +17,13 @@ pub fn receive(alloc: std.mem.Allocator, stream: *std.Io.Reader) !@This() {
 
     // Read each stack
     for (stacks) |*stack| {
+        stack.* = .{};
+
         const item_id = try stream.takeInt(i16, net.endianness);
         if (item_id >= 0) {
             stack.item_id = @intCast(item_id);
             stack.size = try stream.takeInt(u8, net.endianness);
             stack.item_dmg = try stream.takeInt(u16, net.endianness);
-        } else {
-            // Net saves space by not encoding size and dmg for air items
-            stack.item_id = 0;
-            stack.size = 0;
-            stack.item_dmg = 0;
         }
     }
 

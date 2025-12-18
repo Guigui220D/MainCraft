@@ -101,7 +101,7 @@ pub fn run(alloc: std.mem.Allocator) !void {
                     server_running.store(false, .release);
                 },
                 else => {
-                    std.debug.print("{any}\n", .{packet});
+                    //std.debug.print("{any}\n", .{packet});
                 },
             }
 

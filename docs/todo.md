@@ -11,6 +11,12 @@
 - [ ] Render the world and its entities
 - [ ] Menus
 
+## Packets done
+
+Inbounds: 19/57
+Outbounds: 2/57
+*Not all of the 57 packets are both inbounds and outbounds, this is just an indicator
+
 ## Soon
 
 - [ ] NBT decoding and encoding library

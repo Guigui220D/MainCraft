@@ -88,7 +88,7 @@ pub const InboundPacket = union(Packets) {
     pre_chunk_50: @import("client_bound/Packet50PreChunk.zig"),
     map_chunk_51: UnimplementedPacket,
     multi_block_change_52: UnimplementedPacket,
-    block_change_53: UnimplementedPacket,
+    block_change_53: @import("client_bound/Packet53BlockChange.zig"),
     play_note_block_54: UnimplementedPacket,
     unused_55: BadPacket,
     unused_56: BadPacket,

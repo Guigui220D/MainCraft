@@ -75,7 +75,7 @@ pub const InboundPacket = union(Packets) {
     unused_37: BadPacket,
     entity_status_38: UnimplementedPacket,
     attach_entity_39: UnimplementedPacket,
-    entity_metadata_40: UnimplementedPacket,
+    entity_metadata_40: @import("client_bound/Packet40EntityMetadata.zig"),
     unused_41: BadPacket,
     unused_42: BadPacket,
     unused_43: BadPacket,

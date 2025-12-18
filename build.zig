@@ -19,10 +19,19 @@ pub fn build(b: *std.Build) void {
         .target = target,
     });
 
+    const dw_mod = b.addModule("data_watcher", .{
+        .root_source_file = b.path("src/data_watcher/data_watcher.zig"),
+        .target = target,
+        .imports = &.{
+            .{ .name = "inventory", .module = inv_mod },
+        },
+    });
+
     const net_mod = b.addModule("net", .{
         .root_source_file = b.path("src/net/net.zig"),
         .target = target,
         .imports = &.{
+            .{ .name = "data_watcher", .module = dw_mod },
             .{ .name = "inventory", .module = inv_mod },
         },
     });
@@ -38,6 +47,7 @@ pub fn build(b: *std.Build) void {
                 // Internal
                 .{ .name = "nbt", .module = nbt_mod },
                 .{ .name = "net", .module = net_mod },
+                .{ .name = "data_watcher", .module = dw_mod },
                 .{ .name = "inventory", .module = inv_mod },
                 // Dependencies
                 .{ .name = "network", .module = network_dep.module("network") },
@@ -77,6 +87,11 @@ pub fn build(b: *std.Build) void {
     });
     const run_inv_tests = b.addRunArtifact(inv_mod_tests);
 
+    const dw_mod_tests = b.addTest(.{
+        .root_module = dw_mod,
+    });
+    const run_dw_tests = b.addRunArtifact(dw_mod_tests);
+
     // Client tests
     const exe_tests = b.addTest(.{
         .root_module = exe.root_module,
@@ -84,10 +99,17 @@ pub fn build(b: *std.Build) void {
     const run_exe_tests = b.addRunArtifact(exe_tests);
 
     // All tests step
-    // TODO: allow running tests separately for each submodule
     const test_step = b.step("test", "Run tests");
     test_step.dependOn(&run_nbt_tests.step);
     test_step.dependOn(&run_net_tests.step);
     test_step.dependOn(&run_inv_tests.step);
+    test_step.dependOn(&run_dw_tests.step);
     test_step.dependOn(&run_exe_tests.step);
+
+    // Individual test steps
+    b.step("test_nbt", "Run NBT module tests").dependOn(&run_nbt_tests.step);
+    b.step("test_net", "Run net module tests").dependOn(&run_net_tests.step);
+    b.step("test_inv", "Run inventory module tests").dependOn(&run_inv_tests.step);
+    b.step("test_dw", "Run data watcher module tests").dependOn(&run_nbt_tests.step);
+    b.step("test_exe", "Run NBT module tests").dependOn(&run_exe_tests.step);
 }

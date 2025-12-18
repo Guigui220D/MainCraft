@@ -4,6 +4,7 @@ const std = @import("std");
 const net = @import("../net.zig");
 const string = @import("../string.zig");
 const ItemStack = @import("inventory").ItemStack;
+const is_reader = @import("readers/item_stack.zig");
 
 window_id: i8,
 item_slot: i16,
@@ -14,14 +15,7 @@ pub fn receive(_: std.mem.Allocator, stream: *std.Io.Reader) !@This() {
     const item_slot = try stream.takeInt(i16, net.endianness);
 
     // Read item stack
-    const item_id = try stream.takeInt(i16, net.endianness);
-
-    var stack: ItemStack = .{};
-    if (item_id >= 0) {
-        stack.item_id = @intCast(item_id);
-        stack.size = try stream.takeInt(u8, net.endianness);
-        stack.item_dmg = try stream.takeInt(u16, net.endianness);
-    }
+    const stack: ItemStack = try is_reader.read(stream, .compact);
 
     return .{
         .item_slot = item_slot,

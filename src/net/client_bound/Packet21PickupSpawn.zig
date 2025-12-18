@@ -11,6 +11,7 @@ z_position: i32,
 rotation: i8,
 pitch: i8,
 roll: i8,
+// TODO: item stack?
 item_id: i16,
 stack_size: i8,
 item_dmg: i16,

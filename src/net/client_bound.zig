@@ -53,7 +53,7 @@ pub const InboundPacket = union(Packets) {
     place_15: UnimplementedPacket,
     block_item_switch_16: UnimplementedPacket,
     sleep_17: UnimplementedPacket,
-    animation_18: UnimplementedPacket,
+    animation_18: @import("client_bound/Packet18Animation.zig"),
     entity_action_19: UnimplementedPacket,
     named_entity_spawn_20: @import("client_bound/Packet20NamedEntitySpawn.zig"),
     pickup_spawn_21: @import("client_bound/Packet21PickupSpawn.zig"),

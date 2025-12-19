@@ -2,7 +2,6 @@
 
 const std = @import("std");
 const net = @import("../net.zig");
-const string = @import("../string.zig");
 
 // TODO The java code use a backing "packet flying". Should this be imitated?
 x_position: f64,

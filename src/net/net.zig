@@ -2,11 +2,13 @@
 //! To read packets from a TCP stream
 
 const std = @import("std");
-const client_bound = @import("client_bound.zig");
-const server_bound = @import("server_bound.zig");
+
+pub const client_bound = @import("client_bound.zig");
+pub const server_bound = @import("server_bound.zig");
 
 pub const Packets = @import("packets.zig").Packets;
 pub const InboundPacket = client_bound.InboundPacket;
+pub const OutboundPacket = server_bound.OutboundPacket;
 
 pub const endianness = std.builtin.Endian.big;
 pub const protocol_version = 14;

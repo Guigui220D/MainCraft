@@ -40,7 +40,7 @@ pub const InboundPacket = union(Packets) {
     handshake_2: @import("client_bound/Packet2Handshake.zig"),
     chat_3: @import("client_bound/Packet3Chat.zig"),
     update_time_4: @import("client_bound/Packet4UpdateTime.zig"),
-    player_inventory_5: UnimplementedPacket,
+    player_inventory_5: @import("client_bound/Packet5PlayerInventory.zig"),
     spawn_position_6: @import("client_bound/Packet6SpawnPosition.zig"),
     use_entity_7: UnimplementedPacket,
     update_health_8: UnimplementedPacket,

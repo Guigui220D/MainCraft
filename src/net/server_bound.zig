@@ -79,7 +79,7 @@ pub const OutboundPacket = union(Packets) {
     unused_59: void,
     //
     explosion_60: void,
-    door_change_61: void,
+    particle_effect_61: void,
     //
     unused_62: void,
     unused_63: void,

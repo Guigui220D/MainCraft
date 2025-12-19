@@ -82,7 +82,7 @@ pub fn senderThread(alloc: std.mem.Allocator, out_stream: *std.Io.Writer, out_qu
                 last_sent = std.time.milliTimestamp();
                 const ka = net.server_bound.Packet0KeepAlive{};
                 try ka.send(out_stream);
-                std.debug.print("KeepAlive\n", .{});
+                //std.debug.print("KeepAlive\n", .{});
             }
         }
     }

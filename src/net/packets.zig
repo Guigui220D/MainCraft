@@ -69,7 +69,7 @@ pub const Packets = enum(u8) {
     unused_59 = 59,
     //
     explosion_60 = 60,
-    door_change_61 = 61,
+    particle_effect_61 = 61,
     //
     unused_62 = 62,
     unused_63 = 63,

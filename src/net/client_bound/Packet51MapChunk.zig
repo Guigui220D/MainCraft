@@ -38,3 +38,7 @@ pub fn receive(alloc: std.mem.Allocator, stream: *std.Io.Reader) !@This() {
 
     return ret;
 }
+
+pub fn deinit(self: @This(), alloc: std.mem.Allocator) void {
+    alloc.free(self.chunk);
+}

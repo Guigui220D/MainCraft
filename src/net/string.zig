@@ -22,6 +22,8 @@ pub fn readString(stream: *std.Io.Reader, alloc: std.mem.Allocator, max_length: 
     return utf8;
 }
 
+// TODO: read string fast
+
 /// Discards a string (length + utf16 bytes)
 /// Used when a string field is unused or useless
 pub fn discardString(stream: *std.Io.Reader, max_length: u16) !void {

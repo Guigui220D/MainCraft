@@ -7,9 +7,12 @@ const string = @import("../string.zig");
 reason: []const u8,
 
 pub fn receive(alloc: std.mem.Allocator, stream: *std.Io.Reader) !@This() {
+    // Get reason
+    const reason = try string.readString(stream, alloc, 100);
+    errdefer alloc.free(reason);
+
     return .{
-        // Reason
-        .reason = try string.readString(stream, alloc, 100),
+        .reason = reason,
     };
 }
 

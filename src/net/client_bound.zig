@@ -235,7 +235,7 @@ pub const InboundPacket = union(Packets) {
     unused_197: BadPacket,
     unused_198: BadPacket,
     unused_199: BadPacket,
-    statistic_200: UnimplementedPacket,
+    statistic_200: @import("client_bound/Packet200Statistics.zig"),
     unused_201: BadPacket,
     unused_202: BadPacket,
     unused_203: BadPacket,

@@ -22,7 +22,7 @@ pub fn read(alloc: std.mem.Allocator, stream: *std.Io.Reader) ![]WatchableObject
     }
 
     while (true) {
-        const byte = try stream.takeInt(u8, net.endianness);
+        const byte = try stream.takeByte();
 
         // 127 is the end marker
         if (byte == 127)

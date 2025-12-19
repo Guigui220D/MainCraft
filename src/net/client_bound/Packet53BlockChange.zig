@@ -13,9 +13,9 @@ pub fn receive(_: std.mem.Allocator, stream: *std.Io.Reader) !@This() {
     return .{
         // Read spawn coordinates
         .x_position = try stream.takeInt(i32, net.endianness),
-        .y_position = try stream.takeInt(u8, net.endianness),
+        .y_position = try stream.takeByte(),
         .z_position = try stream.takeInt(i32, net.endianness),
-        .block_id = try stream.takeInt(u8, net.endianness),
-        .block_meta = try stream.takeInt(u8, net.endianness),
+        .block_id = try stream.takeByte(),
+        .block_meta = try stream.takeByte(),
     };
 }

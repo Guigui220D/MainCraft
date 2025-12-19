@@ -20,7 +20,7 @@ pub fn read(reader: *std.Io.Reader, comptime read_mode: ReadMode) !ItemStack {
         if (item_id >= 0) {
             // Only read item when id is non zero
             ret.item_id = @intCast(item_id);
-            ret.size = try reader.takeInt(u8, net.endianness);
+            ret.size = try reader.takeByte();
             ret.item_dmg = try reader.takeInt(u16, net.endianness);
         }
 
@@ -28,7 +28,7 @@ pub fn read(reader: *std.Io.Reader, comptime read_mode: ReadMode) !ItemStack {
     } else {
         return .{
             .item_id = @intCast(try reader.takeInt(i16, net.endianness)),
-            .size = try reader.takeInt(u8, net.endianness),
+            .size = try reader.takeByte(),
             .item_dmg = try reader.takeInt(u16, net.endianness),
         };
     }

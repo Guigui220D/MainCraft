@@ -1,10 +1,10 @@
 const std = @import("std");
-const server = @import("server.zig");
+const client = @import("client.zig");
 
 pub fn main() !void {
     var gpa: std.heap.GeneralPurposeAllocator(.{}) = .init;
     defer _ = gpa.deinit();
     const alloc = gpa.allocator();
 
-    try server.run(alloc);
+    try client.run(alloc);
 }

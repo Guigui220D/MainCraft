@@ -18,9 +18,9 @@ pub fn receive(alloc: std.mem.Allocator, stream: *std.Io.Reader) !@This() {
         .x_position = try stream.takeInt(i32, net.endianness),
         .y_position = try stream.takeInt(i16, net.endianness),
         .z_position = try stream.takeInt(i32, net.endianness),
-        .x_size = try stream.takeInt(u8, net.endianness) + 1,
-        .y_size = try stream.takeInt(u8, net.endianness) + 1,
-        .z_size = try stream.takeInt(u8, net.endianness) + 1,
+        .x_size = try stream.takeByte() + 1,
+        .y_size = try stream.takeByte() + 1,
+        .z_size = try stream.takeByte() + 1,
         .chunk_size = try stream.takeInt(u32, net.endianness),
         .chunk = undefined,
     };

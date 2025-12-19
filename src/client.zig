@@ -93,7 +93,7 @@ pub fn run(alloc: std.mem.Allocator) !void {
                     try net.login(&writer.interface);
                 },
                 .chat_3 => |chat| {
-                    std.debug.print("{s}\n", .{chat.message});
+                    std.debug.print("\"{s}\"\n", .{chat.message});
                 },
                 .kick_disconnect_255 => |kick| {
                     std.debug.print("Kicked! Reason: \"{s}\"\n", .{kick.reason});

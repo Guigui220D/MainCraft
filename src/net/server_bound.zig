@@ -7,6 +7,9 @@ const Packets = @import("packets.zig").Packets;
 pub const Packet0KeepAlive = @import("server_bound/Packet0KeepAlive.zig");
 pub const Packet1Login = @import("server_bound/Packet1Login.zig");
 pub const Packet2Handshake = @import("server_bound/Packet2Handshake.zig");
+pub const Packet10OnGround = @import("server_bound/Packet10OnGround.zig");
+pub const Packet11PlayerPosition = @import("server_bound/Packet11PlayerPosition.zig");
+pub const Packet13PlayerLookMove = @import("server_bound/Packet13PlayerLookMove.zig");
 
 pub const OutboundPacket = union(Packets) {
     /// Send the packet
@@ -43,10 +46,10 @@ pub const OutboundPacket = union(Packets) {
     use_entity_7: void,
     update_health_8: void,
     respawn_9: void,
-    flying_10: void,
-    player_position_11: void,
+    on_ground_10: Packet10OnGround,
+    player_position_11: Packet11PlayerPosition,
     player_look_12: void,
-    player_look_move_13: void,
+    player_look_move_13: Packet13PlayerLookMove,
     block_dig_14: void,
     place_15: void,
     block_item_switch_16: void,

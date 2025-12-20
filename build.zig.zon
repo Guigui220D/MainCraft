@@ -40,6 +40,10 @@
             .url = "https://github.com/freref/spsc-queue/archive/3ce8a39c53b026ef42eb569e66bc04c6356869e8.tar.gz",
             .hash = "spsc_queue-0.0.0-AVEoh1VJAAAANyL-T7uKYvwDBTU9R0i42Avs_Bp-43wr",
         },
+        .raylib_zig = .{
+            .url = "git+https://github.com/raylib-zig/raylib-zig?ref=devel#a4d18b2d1cf8fdddec68b5b084535fca0475f466",
+            .hash = "raylib_zig-5.6.0-dev-KE8REL5MBQAf3p497t52Xw9P7ojndIkVOWPXnLiLLw2P",
+        },
     },
     .paths = .{
         "build.zig",

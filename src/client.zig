@@ -135,7 +135,7 @@ pub fn run(alloc: std.mem.Allocator) !void {
 
     while (server_running.load(.acquire)) {
         // Pop new packet
-        if (in_queue.front()) |new_packet| {
+        while (in_queue.front()) |new_packet| {
             const packet = new_packet.*;
             in_queue.pop();
 
@@ -174,23 +174,24 @@ pub fn run(alloc: std.mem.Allocator) !void {
                     }
                 },
             }
-
-            if (is_connected) {
-                // run game prototype
-            }
-        } else {
-            // Sleep for 100 microsecond
-            std.Thread.sleep(100000);
-            // Handle timeout (5 seconds)
-            const now = std.time.milliTimestamp();
-            const last_packet = last_packet_ms.load(.unordered);
-            if (now - last_packet > 5000) {
-                std.debug.print("Timeout! Disconnecting.\n", .{});
-                server_running.store(false, .release);
-            }
         }
 
-        // TODO: watch time
+        // Sleep for 50ms for 20Tps
+        std.Thread.sleep(50000000);
+        // Handle timeout (5 seconds)
+        const now = std.time.milliTimestamp();
+        const last_packet = last_packet_ms.load(.unordered);
+        if (now - last_packet > 5000) {
+            std.debug.print("Timeout! Disconnecting.\n", .{});
+            server_running.store(false, .release);
+        }
+
+        if (is_connected) {
+            // run game prototype
+            // Server should kick us after a while for flying
+            //enqueuePacket(&out_queue, net.server_bound.Packet10OnGround{ .on_ground = true });
+            enqueuePacket(&out_queue, net.server_bound.Packet13PlayerLookMove{ .x_position = 10.5, .y_position = 66.0, .y_center_position = 66.62, .z_position = -118.5, .yaw = 0, .pitch = 0, .on_ground = false });
+        }
     }
 
     sock.close();

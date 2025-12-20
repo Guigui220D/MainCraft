@@ -45,7 +45,7 @@ pub const InboundPacket = union(Packets) {
     use_entity_7: UnimplementedPacket,
     update_health_8: UnimplementedPacket,
     respawn_9: UnimplementedPacket,
-    flying_10: UnimplementedPacket,
+    on_ground_10: UnimplementedPacket,
     player_position_11: UnimplementedPacket,
     player_look_12: UnimplementedPacket,
     player_look_move_13: @import("client_bound/Packet13PlayerLookMove.zig"),

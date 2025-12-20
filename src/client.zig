@@ -15,7 +15,7 @@ var game_time: std.atomic.Value(i64) = undefined;
 /// Timestamp of the last packet released
 var last_packet_ms: std.atomic.Value(i64) = undefined;
 
-pub fn receiverThread(alloc: std.mem.Allocator, in_stream: *std.Io.Reader, in_queue: *InQueue) !void {
+fn receiverThread(alloc: std.mem.Allocator, in_stream: *std.Io.Reader, in_queue: *InQueue) !void {
     while (server_running.load(.acquire)) {
         // Read packet
         const incoming_packet = net.readPacket(alloc, in_stream) catch |e| {
@@ -48,7 +48,7 @@ pub fn receiverThread(alloc: std.mem.Allocator, in_stream: *std.Io.Reader, in_qu
     }
 }
 
-pub fn senderThread(alloc: std.mem.Allocator, out_stream: *std.Io.Writer, out_queue: *OutQueue) !void {
+fn senderThread(alloc: std.mem.Allocator, out_stream: *std.Io.Writer, out_queue: *OutQueue) !void {
     _ = alloc;
     var last_sent = std.time.milliTimestamp();
 
@@ -58,17 +58,7 @@ pub fn senderThread(alloc: std.mem.Allocator, out_stream: *std.Io.Writer, out_qu
             out_queue.pop();
 
             // Serialize packet
-            switch (packet) {
-                inline else => |p| {
-                    const PacketT = @TypeOf(p);
-                    if (PacketT != void and @hasDecl(PacketT, "send")) {
-                        // TODO: catch different errors
-                        try p.send(out_stream);
-                    } else {
-                        std.debug.print("No send function for queued packet!\n", .{});
-                    }
-                },
-            }
+            try packet.send(out_stream);
 
             // TODO: deinit packets that are allocated
 
@@ -86,6 +76,11 @@ pub fn senderThread(alloc: std.mem.Allocator, out_stream: *std.Io.Writer, out_qu
             }
         }
     }
+}
+
+// TODO: omit reference to out_queue
+fn enqueuePacket(out_queue: *OutQueue, packet: anytype) void {
+    std.debug.assert(out_queue.tryPush(net.OutboundPacket.encapsulate(packet)));
 }
 
 pub fn run(alloc: std.mem.Allocator) !void {
@@ -135,7 +130,8 @@ pub fn run(alloc: std.mem.Allocator) !void {
     var sender_thread = try std.Thread.spawn(.{}, senderThread, .{ alloc, &writer.interface, &out_queue });
 
     // Initiate handshake
-    try net.handshake(&writer.interface);
+    enqueuePacket(&out_queue, net.server_bound.Packet2Handshake{ .username = "MainCraft1" });
+    var is_connected = false;
 
     while (server_running.load(.acquire)) {
         // Pop new packet
@@ -146,10 +142,11 @@ pub fn run(alloc: std.mem.Allocator) !void {
             switch (packet) {
                 .login_1 => |login| {
                     std.debug.print("Login successful! {any}\n", .{login});
+                    is_connected = true;
                 },
                 .handshake_2 => {
                     std.debug.print("Shaked hands!\n", .{});
-                    try net.login(&writer.interface);
+                    enqueuePacket(&out_queue, net.server_bound.Packet1Login{ .username = "MainCraft1" });
                 },
                 .chat_3 => |chat| {
                     std.debug.print("\"{s}\"\n", .{chat.message});
@@ -176,6 +173,10 @@ pub fn run(alloc: std.mem.Allocator) !void {
                         p.deinit(alloc);
                     }
                 },
+            }
+
+            if (is_connected) {
+                // run game prototype
             }
         } else {
             // Sleep for 100 microsecond

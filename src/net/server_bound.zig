@@ -9,6 +9,29 @@ pub const Packet1Login = @import("server_bound/Packet1Login.zig");
 pub const Packet2Handshake = @import("server_bound/Packet2Handshake.zig");
 
 pub const OutboundPacket = union(Packets) {
+    /// Send the packet
+    pub fn send(self: @This(), stream: *std.Io.Writer) !void {
+        // Packet ID
+        try stream.writeByte(@intFromEnum(std.meta.activeTag(self)));
+        // Payload
+        switch (self) {
+            inline else => |payload| {
+                const PayloadT = @TypeOf(payload);
+                if (PayloadT != void and @hasDecl(PayloadT, "send")) {
+                    try payload.send(stream);
+                } else {
+                    std.debug.print("No send function for queued packet!\n", .{});
+                }
+            },
+        }
+        // TODO: should this be done here?
+        try stream.flush();
+    }
+
+    pub fn encapsulate(packet: anytype) OutboundPacket {
+        return @unionInit(@This(), @tagName(@TypeOf(packet).tag), packet);
+    }
+
     //
     keep_alive_0: Packet0KeepAlive,
     login_1: Packet1Login,

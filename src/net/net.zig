@@ -33,18 +33,6 @@ pub fn readPacket(alloc: std.mem.Allocator, data: *std.Io.Reader) !InboundPacket
     }
 }
 
-/// TEMPORARY (TODO where to put functions like this?)
-pub fn handshake(stream: *std.Io.Writer) !void {
-    const packet = server_bound.Packet2Handshake{ .username = "MainCraft1" };
-    try packet.send(stream);
-}
-
-/// TEMPORARY (TODO where to put functions like this?)
-pub fn login(stream: *std.Io.Writer) !void {
-    const packet = server_bound.Packet1Login{ .username = "MainCraft1" };
-    try packet.send(stream);
-}
-
 test "net tests" {
     std.testing.refAllDecls(@import("var_int.zig"));
     std.testing.refAllDecls(@import("string.zig"));

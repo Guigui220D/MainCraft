@@ -3,11 +3,6 @@
 const std = @import("std");
 const net = @import("../net.zig");
 
-pub fn send(self: @This(), stream: *std.Io.Writer) !void {
-    _ = self;
-    // Packet ID
-    try stream.writeByte(0x00);
+pub fn send(_: @This(), _: *std.Io.Writer) !void {}
 
-    // TODO: should this be done here?
-    try stream.flush();
-}
+pub const tag = net.Packets.keep_alive_0;

@@ -10,8 +10,6 @@ username: []const u8,
 // dimension: i8, // Unused for serverbound
 
 pub fn send(self: @This(), stream: *std.Io.Writer) !void {
-    // Packet ID
-    try stream.writeByte(0x01);
     // Protocol version
     try stream.writeInt(u32, net.protocol_version, net.endianness);
     // Username
@@ -20,7 +18,6 @@ pub fn send(self: @This(), stream: *std.Io.Writer) !void {
     try stream.writeInt(i64, 0, net.endianness);
     // Dimension (unused)
     try stream.writeInt(i8, 0, net.endianness);
-
-    // TODO: should this be done here?
-    try stream.flush();
 }
+
+pub const tag = net.Packets.login_1;

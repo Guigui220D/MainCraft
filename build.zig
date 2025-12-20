@@ -7,6 +7,10 @@ pub fn build(b: *std.Build) void {
     // Dependencies
     const network_dep = b.dependency("network", .{});
     const spsc_queue_dep = b.dependency("spsc_queue", .{});
+    const raylib_dep = b.dependency("raylib_zig", .{
+        .target = target,
+        .optimize = optimize,
+    });
 
     // Internal modules
     const nbt_mod = b.addModule("nbt", .{
@@ -26,6 +30,16 @@ pub fn build(b: *std.Build) void {
             .{ .name = "inventory", .module = inv_mod },
         },
     });
+
+    const io_mod = b.addModule("io", .{
+        .root_source_file = b.path("src/io/io.zig"),
+        .target = target,
+        .imports = &.{
+            .{ .name = "raylib", .module = raylib_dep.module("raylib") },
+            .{ .name = "raygui", .module = raylib_dep.module("raygui") },
+        },
+    });
+    io_mod.linkLibrary(raylib_dep.artifact("raylib"));
 
     const net_mod = b.addModule("net", .{
         .root_source_file = b.path("src/net/net.zig"),
@@ -49,6 +63,7 @@ pub fn build(b: *std.Build) void {
                 .{ .name = "net", .module = net_mod },
                 .{ .name = "data_watcher", .module = dw_mod },
                 .{ .name = "inventory", .module = inv_mod },
+                .{ .name = "io", .module = io_mod },
                 // Dependencies
                 .{ .name = "network", .module = network_dep.module("network") },
                 .{ .name = "spsc_queue", .module = spsc_queue_dep.module("spsc_queue") },

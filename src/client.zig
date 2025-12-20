@@ -1,4 +1,5 @@
 const std = @import("std");
+const io = @import("io");
 const network = @import("network");
 const net = @import("net");
 const queue = @import("spsc_queue");
@@ -133,6 +134,9 @@ pub fn run(alloc: std.mem.Allocator) !void {
     enqueuePacket(&out_queue, net.server_bound.Packet2Handshake{ .username = "MainCraft1" });
     var is_connected = false;
 
+    var window = try io.GameWindow.init();
+    defer window.deinit();
+
     while (server_running.load(.acquire)) {
         // Pop new packet
         while (in_queue.front()) |new_packet| {
@@ -192,6 +196,13 @@ pub fn run(alloc: std.mem.Allocator) !void {
             //enqueuePacket(&out_queue, net.server_bound.Packet10OnGround{ .on_ground = true });
             enqueuePacket(&out_queue, net.server_bound.Packet13PlayerLookMove{ .x_position = 10.5, .y_position = 66.0, .y_center_position = 66.62, .z_position = -118.5, .yaw = 0, .pitch = 0, .on_ground = false });
         }
+
+        if (window.hasClosed()) {
+            std.debug.print("Closing!\n", .{});
+            server_running.store(false, .release);
+        }
+
+        window.draw();
     }
 
     sock.close();

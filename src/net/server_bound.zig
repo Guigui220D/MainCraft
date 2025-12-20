@@ -33,7 +33,7 @@ pub const OutboundPacket = union(Packets) {
     named_entity_spawn_20: void,
     pickup_spawn_21: void,
     collect_22: void,
-    vehicle_spawn_23: void,
+    inanimate_spawn_23: void,
     mob_spawn_24: void,
     entity_painting_25: void,
     //

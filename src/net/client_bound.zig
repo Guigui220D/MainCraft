@@ -58,7 +58,7 @@ pub const InboundPacket = union(Packets) {
     named_entity_spawn_20: @import("client_bound/Packet20NamedEntitySpawn.zig"),
     pickup_spawn_21: @import("client_bound/Packet21PickupSpawn.zig"),
     collect_22: @import("client_bound/Packet22Collect.zig"),
-    vehicle_spawn_23: UnimplementedPacket,
+    inanimate_spawn_23: @import("client_bound/Packet23InanimateSpawn.zig"),
     mob_spawn_24: @import("client_bound/Packet24MobSpawn.zig"),
     entity_painting_25: UnimplementedPacket,
     unused_26: BadPacket,

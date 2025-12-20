@@ -19,3 +19,5 @@ pub fn receive(_: std.mem.Allocator, stream: *std.Io.Reader) !@This() {
         .block_meta = try stream.takeByte(),
     };
 }
+
+pub const DonutPrint = .{};

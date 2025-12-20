@@ -19,3 +19,5 @@ pub fn receive(_: std.mem.Allocator, stream: *std.Io.Reader) !@This() {
         .z_motion = try stream.takeInt(i16, net.endianness),
     };
 }
+
+pub const DonutPrint = .{};

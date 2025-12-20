@@ -1,4 +1,5 @@
 //! Packet indicating a loose item has been picked up
+
 const std = @import("std");
 const net = @import("../net.zig");
 

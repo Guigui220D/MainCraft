@@ -159,9 +159,13 @@ pub fn run(alloc: std.mem.Allocator) !void {
                     // Stop client
                     server_running.store(false, .release);
                 },
-                else => {
-                    //std.debug.print("{any}\n", .{packet});
-                },
+                else => {},
+            }
+
+            if (switch (packet) {
+                inline else => |pack| !@hasDecl(@TypeOf(pack), "DonutPrint"),
+            }) {
+                std.debug.print("{any}\n", .{packet});
             }
 
             // Deinit if there is a deinit function

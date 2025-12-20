@@ -23,3 +23,5 @@ pub fn receive(_: std.mem.Allocator, stream: *std.Io.Reader) !@This() {
         .pitch = try stream.takeInt(i8, net.endianness),
     };
 }
+
+pub const DonutPrint = .{};

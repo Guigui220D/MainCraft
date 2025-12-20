@@ -23,7 +23,7 @@ pub const Packets = enum(u8) {
     named_entity_spawn_20 = 20,
     pickup_spawn_21 = 21,
     collect_22 = 22,
-    vehicle_spawn_23 = 23,
+    inanimate_spawn_23 = 23,
     mob_spawn_24 = 24,
     entity_painting_25 = 25,
     //

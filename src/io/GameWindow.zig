@@ -3,6 +3,8 @@
 const std = @import("std");
 const rl = @import("raylib");
 
+const terrain = @import("terrain");
+
 const GameWindow = @This();
 
 const screenWidth = 800;
@@ -38,23 +40,27 @@ pub fn update(self: *GameWindow) void {
     self.camera.update(.free);
 }
 
-pub fn draw(self: GameWindow) void {
+pub fn beginDraw(self: GameWindow) void {
     rl.beginDrawing();
-    defer rl.endDrawing();
-
-    rl.clearBackground(.white);
-
-    {
-        self.camera.begin();
-        defer self.camera.end();
-
-        rl.drawCube(self.cube_position, 2, 2, 2, .red);
-        rl.drawCubeWires(self.cube_position, 2, 2, 2, .maroon);
-
-        rl.drawGrid(10, 1);
-    }
-
+    defer rl.clearBackground(.white);
     rl.drawText("Hello from Maincraft", 190, 200, 20, .light_gray);
+
+    self.camera.begin();
+}
+
+pub fn drawWorld(self: GameWindow, world: terrain.World) void {
+    _ = self;
+    var chunk_it = world.chunk_list.iterator();
+    while (chunk_it.next()) |entry| {
+        if (entry.value_ptr.*.model) |model| {
+            model.draw(entry.key_ptr.*);
+        }
+    }
+}
+
+pub fn endDraw(self: GameWindow) void {
+    self.camera.end();
+    rl.endDrawing();
 }
 
 pub fn deinit(_: GameWindow) void {

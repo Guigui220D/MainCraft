@@ -1,7 +1,5 @@
 //! A collection of chunks
 
-// TODO: make this a separate module too?
-
 const std = @import("std");
 const coord = @import("coord");
 
@@ -36,6 +34,8 @@ pub fn doPreChunk(self: *World, coords: coord.Chunk, add: bool) !void {
             const new_chunk = try Chunk.initEmpty(self.alloc, coords);
             errdefer new_chunk.destroyChunk(self.alloc);
             try self.chunk_list.put(coords, new_chunk);
+            // Temporary
+            try new_chunk.updateModel();
         }
     } else {
         // Remove chunk

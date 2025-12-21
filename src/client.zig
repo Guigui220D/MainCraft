@@ -4,7 +4,7 @@ const network = @import("network");
 const net = @import("net");
 const queue = @import("spsc_queue");
 
-const World = @import("world/World.zig");
+const World = @import("terrain").World;
 
 // TODO: better logging (detailed full packet list print?)
 
@@ -221,7 +221,9 @@ pub fn run(alloc: std.mem.Allocator) !void {
         }
 
         window.update();
-        window.draw();
+        window.beginDraw();
+        window.drawWorld(world);
+        window.endDraw();
     }
 
     sock.close();

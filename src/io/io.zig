@@ -2,3 +2,4 @@
 //! i.e. windowing, graphics, audio, and input
 
 pub const GameWindow = @import("GameWindow.zig");
+pub const ChunkModel = @import("ChunkModel.zig");

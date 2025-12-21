@@ -7,7 +7,7 @@ const net = @import("../net.zig");
 x_position: f64,
 y_position: f64,
 z_position: f64,
-stance: f64,
+y_center_position: f64,
 yaw: f32,
 pitch: f32,
 on_ground: bool,
@@ -17,7 +17,7 @@ pub fn receive(_: std.mem.Allocator, stream: *std.Io.Reader) !@This() {
         // Ah yes, nice layout
         .x_position = @bitCast(try stream.takeInt(u64, net.endianness)),
         .y_position = @bitCast(try stream.takeInt(u64, net.endianness)),
-        .stance = @bitCast(try stream.takeInt(u64, net.endianness)),
+        .y_center_position = @bitCast(try stream.takeInt(u64, net.endianness)),
         .z_position = @bitCast(try stream.takeInt(u64, net.endianness)),
         .yaw = @bitCast(try stream.takeInt(u32, net.endianness)),
         .pitch = @bitCast(try stream.takeInt(u32, net.endianness)),

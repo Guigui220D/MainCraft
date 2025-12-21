@@ -22,8 +22,8 @@ pub fn init() !GameWindow {
 
     return .{
         .camera = rl.Camera{
-            .position = .init(10, 10, 10),
-            .target = .init(0, 0, 0),
+            .position = .init(0, 120, 0),
+            .target = .init(10, 120, 0),
             .up = .init(0, 1, 0),
             .fovy = 45,
             .projection = .perspective,

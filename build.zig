@@ -55,7 +55,6 @@ pub fn build(b: *std.Build) void {
         },
     });
     io_mod.linkLibrary(raylib_dep.artifact("raylib"));
-
     terrain_mod.addImport("io", io_mod);
 
     const net_mod = b.addModule("net", .{

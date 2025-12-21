@@ -9,8 +9,7 @@ z_position: i32,
 x_size: u8,
 y_size: u8,
 z_size: u8,
-chunk_size: u32,
-chunk: []u8,
+data: []u8,
 
 pub fn receive(alloc: std.mem.Allocator, stream: *std.Io.Reader) !@This() {
     // Metadata
@@ -21,24 +20,27 @@ pub fn receive(alloc: std.mem.Allocator, stream: *std.Io.Reader) !@This() {
         .x_size = try stream.takeByte() + 1,
         .y_size = try stream.takeByte() + 1,
         .z_size = try stream.takeByte() + 1,
-        .chunk_size = try stream.takeInt(u32, net.endianness),
-        .chunk = undefined,
+
+        .data = undefined,
     };
+
+    // Data size isn't a separate field, it is with the data slice
+    const data_size = try stream.takeInt(u32, net.endianness);
 
     // Read chunk data
     // TODO: do I even need to buffer to read or can I stream it?
-    const buf = try stream.readAlloc(alloc, @intCast(ret.chunk_size));
+    const buf = try stream.readAlloc(alloc, @intCast(data_size));
     defer alloc.free(buf);
     var buf_reader = std.Io.Reader.fixed(buf);
 
     // Init flate decompressor, and flush it all
     var decomp = std.compress.flate.Decompress.init(&buf_reader, .zlib, &.{});
-    ret.chunk = try decomp.reader.allocRemaining(alloc, .unlimited); // TODO: surely there should be a limit? Figure out what should be the limit based on chunk sizes
-    errdefer alloc.free(ret.chunk);
+    ret.data = try decomp.reader.allocRemaining(alloc, .unlimited); // TODO: surely there should be a limit? Figure out what should be the limit based on chunk sizes
+    errdefer alloc.free(ret.data);
 
     return ret;
 }
 
 pub fn deinit(self: @This(), alloc: std.mem.Allocator) void {
-    alloc.free(self.chunk);
+    alloc.free(self.data);
 }

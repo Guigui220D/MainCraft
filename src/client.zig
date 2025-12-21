@@ -37,12 +37,6 @@ fn receiverThread(alloc: std.mem.Allocator, in_stream: *std.Io.Reader, in_queue:
         switch (incoming_packet) {
             .keep_alive_0 => {},
             .update_time_4 => |time| game_time.store(time.time, .unordered),
-            .kick_disconnect_255 => |_| {
-                // Stop server
-                server_running.store(false, .release);
-                // Push anyways (for message)
-                in_queue.push(incoming_packet);
-            },
             else => in_queue.push(incoming_packet),
         }
 
@@ -153,6 +147,9 @@ pub fn run(alloc: std.mem.Allocator) !void {
     var world: World = try .init(alloc);
     defer world.deinit();
 
+    //Temporary to satisfy server expecting us to match the expected position
+    var last_plm = net.server_bound.Packet13PlayerLookMove{ .x_position = 10.5, .y_position = 66.0, .y_center_position = 66.62, .z_position = -118.5, .yaw = 0, .pitch = 0, .on_ground = false };
+
     while (server_running.load(.acquire)) {
         // Pop new packet
         while (in_queue.front()) |new_packet| {
@@ -171,21 +168,32 @@ pub fn run(alloc: std.mem.Allocator) !void {
                 .chat_3 => |chat| {
                     std.debug.print("\"{s}\"\n", .{chat.message});
                 },
+                .player_look_move_13 => |plm| {
+                    last_plm = .{
+                        .on_ground = plm.on_ground,
+                        .pitch = plm.pitch,
+                        .yaw = plm.yaw,
+                        .x_position = plm.x_position,
+                        .y_position = plm.y_position,
+                        .z_position = plm.z_position,
+                        .y_center_position = plm.y_center_position,
+                    };
+                },
                 .pre_chunk_50 => |pc| {
                     try world.doPreChunk(.{ .x = pc.x_position, .z = pc.z_position }, pc.mode);
+                },
+                .map_chunk_51 => |mc| {
+                    try world.doChunkMap(mc.x_position, mc.y_position, mc.z_position, mc.x_size, mc.y_size, mc.z_size, mc.data);
                 },
                 .kick_disconnect_255 => |kick| {
                     std.debug.print("Kicked! Reason: \"{s}\"\n", .{kick.reason});
                     // Stop client
                     server_running.store(false, .release);
                 },
-                else => {},
-            }
-
-            if (switch (packet) {
-                inline else => |pack| !@hasDecl(@TypeOf(pack), "DonutPrint"),
-            }) {
-                std.debug.print("{any}\n", .{packet});
+                inline else => |pack| {
+                    if (!@hasDecl(@TypeOf(pack), "DonutPrint"))
+                        std.debug.print("{any}\n", .{packet});
+                },
             }
 
             // Deinit if there is a deinit function
@@ -203,15 +211,17 @@ pub fn run(alloc: std.mem.Allocator) !void {
         const now = std.time.milliTimestamp();
         const last_packet = last_packet_ms.load(.unordered);
         if (now - last_packet > 5000) {
-            std.debug.print("Timeout! Disconnecting.\n", .{});
-            server_running.store(false, .release);
+            //std.debug.print("Timeout! Disconnecting.\n", .{});
+            //server_running.store(false, .release);
         }
 
         if (is_connected and shouldTick()) {
             // run game prototype
             // Server should kick us after a while for flying
             //enqueuePacket(&out_queue, net.server_bound.Packet10OnGround{ .on_ground = true });
-            //enqueuePacket(&out_queue, net.server_bound.Packet13PlayerLookMove{ .x_position = 10.5, .y_position = 66.0, .y_center_position = 66.62, .z_position = -118.5, .yaw = 0, .pitch = 0, .on_ground = false });
+            last_plm.y_position -= 0.1;
+            last_plm.y_center_position -= 0.1;
+            enqueuePacket(&out_queue, last_plm);
         }
 
         if (window.hasClosed()) {

@@ -4,6 +4,8 @@ const network = @import("network");
 const net = @import("net");
 const queue = @import("spsc_queue");
 
+const World = @import("world/World.zig");
+
 // TODO: better logging (detailed full packet list print?)
 
 const InQueue = queue.SpscQueue(net.InboundPacket, true);
@@ -84,6 +86,17 @@ fn enqueuePacket(out_queue: *OutQueue, packet: anytype) void {
     std.debug.assert(out_queue.tryPush(net.OutboundPacket.encapsulate(packet)));
 }
 
+var last_tick: i64 = 0;
+/// TEMPORARY function to manage tick rate
+fn shouldTick() bool {
+    if (std.time.milliTimestamp() - last_tick >= 50) {
+        last_tick = std.time.milliTimestamp();
+        return true;
+    } else {
+        return false;
+    }
+}
+
 pub fn run(alloc: std.mem.Allocator) !void {
     server_running = .init(true);
     game_time = .init(undefined);
@@ -137,6 +150,9 @@ pub fn run(alloc: std.mem.Allocator) !void {
     var window = try io.GameWindow.init();
     defer window.deinit();
 
+    var world: World = try .init(alloc);
+    defer world.deinit();
+
     while (server_running.load(.acquire)) {
         // Pop new packet
         while (in_queue.front()) |new_packet| {
@@ -154,6 +170,9 @@ pub fn run(alloc: std.mem.Allocator) !void {
                 },
                 .chat_3 => |chat| {
                     std.debug.print("\"{s}\"\n", .{chat.message});
+                },
+                .pre_chunk_50 => |pc| {
+                    try world.doPreChunk(.{ .x = pc.x_position, .z = pc.z_position }, pc.mode);
                 },
                 .kick_disconnect_255 => |kick| {
                     std.debug.print("Kicked! Reason: \"{s}\"\n", .{kick.reason});
@@ -180,8 +199,6 @@ pub fn run(alloc: std.mem.Allocator) !void {
             }
         }
 
-        // Sleep for 50ms for 20Tps
-        std.Thread.sleep(50000000);
         // Handle timeout (5 seconds)
         const now = std.time.milliTimestamp();
         const last_packet = last_packet_ms.load(.unordered);
@@ -190,18 +207,20 @@ pub fn run(alloc: std.mem.Allocator) !void {
             server_running.store(false, .release);
         }
 
-        if (is_connected) {
+        if (is_connected and shouldTick()) {
             // run game prototype
             // Server should kick us after a while for flying
             //enqueuePacket(&out_queue, net.server_bound.Packet10OnGround{ .on_ground = true });
-            enqueuePacket(&out_queue, net.server_bound.Packet13PlayerLookMove{ .x_position = 10.5, .y_position = 66.0, .y_center_position = 66.62, .z_position = -118.5, .yaw = 0, .pitch = 0, .on_ground = false });
+            //enqueuePacket(&out_queue, net.server_bound.Packet13PlayerLookMove{ .x_position = 10.5, .y_position = 66.0, .y_center_position = 66.62, .z_position = -118.5, .yaw = 0, .pitch = 0, .on_ground = false });
         }
 
         if (window.hasClosed()) {
             std.debug.print("Closing!\n", .{});
             server_running.store(false, .release);
+            continue;
         }
 
+        window.update();
         window.draw();
     }
 

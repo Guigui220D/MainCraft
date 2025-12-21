@@ -23,6 +23,11 @@ pub fn build(b: *std.Build) void {
         .target = target,
     });
 
+    const coord_mod = b.addModule("coord", .{
+        .root_source_file = b.path("src/coord/coord.zig"),
+        .target = target,
+    });
+
     const dw_mod = b.addModule("data_watcher", .{
         .root_source_file = b.path("src/data_watcher/data_watcher.zig"),
         .target = target,
@@ -64,6 +69,7 @@ pub fn build(b: *std.Build) void {
                 .{ .name = "data_watcher", .module = dw_mod },
                 .{ .name = "inventory", .module = inv_mod },
                 .{ .name = "io", .module = io_mod },
+                .{ .name = "coord", .module = coord_mod },
                 // Dependencies
                 .{ .name = "network", .module = network_dep.module("network") },
                 .{ .name = "spsc_queue", .module = spsc_queue_dep.module("spsc_queue") },
@@ -107,6 +113,16 @@ pub fn build(b: *std.Build) void {
     });
     const run_dw_tests = b.addRunArtifact(dw_mod_tests);
 
+    const io_mod_tests = b.addTest(.{
+        .root_module = io_mod,
+    });
+    const run_io_tests = b.addRunArtifact(io_mod_tests);
+
+    const coord_mod_tests = b.addTest(.{
+        .root_module = coord_mod,
+    });
+    const run_coord_tests = b.addRunArtifact(coord_mod_tests);
+
     // Client tests
     const exe_tests = b.addTest(.{
         .root_module = exe.root_module,
@@ -119,6 +135,8 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_net_tests.step);
     test_step.dependOn(&run_inv_tests.step);
     test_step.dependOn(&run_dw_tests.step);
+    test_step.dependOn(&run_io_tests.step);
+    test_step.dependOn(&run_coord_tests.step);
     test_step.dependOn(&run_exe_tests.step);
 
     // Individual test steps
@@ -126,5 +144,7 @@ pub fn build(b: *std.Build) void {
     b.step("test_net", "Run net module tests").dependOn(&run_net_tests.step);
     b.step("test_inv", "Run inventory module tests").dependOn(&run_inv_tests.step);
     b.step("test_dw", "Run data watcher module tests").dependOn(&run_nbt_tests.step);
+    b.step("test_io", "Run game i/o module tests").dependOn(&run_nbt_tests.step);
+    b.step("test_coord", "Run coordinates module tests").dependOn(&run_nbt_tests.step);
     b.step("test_exe", "Run NBT module tests").dependOn(&run_exe_tests.step);
 }

@@ -44,7 +44,6 @@ pub fn doPreChunk(self: *World, coords: coord.Chunk, add: bool) !void {
 pub fn doChunkMap(self: *World, x: i32, y: i16, z: i32, size_x: u8, size_y: u8, size_z: u8, data: []const u8) !void {
     // TODO: initialize chunks or not if they weren't added?
 
-    std.debug.print("doChunkMap size {} {} {}\n", .{ size_x, size_y, size_z });
     // Tracking data left to read
     var remaining = data;
 

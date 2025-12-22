@@ -43,7 +43,7 @@ pub const InboundPacket = union(Packets) {
     player_inventory_5: @import("packets/Packet5PlayerInventory.zig"),
     spawn_position_6: @import("packets/Packet6SpawnPosition.zig"),
     use_entity_7: UnimplementedPacket,
-    update_health_8: UnimplementedPacket,
+    update_health_8: @import("packets/Packet8UpdateHealth.zig"),
     respawn_9: UnimplementedPacket,
     on_ground_10: UnimplementedPacket,
     player_position_11: UnimplementedPacket,

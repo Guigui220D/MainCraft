@@ -3,6 +3,7 @@
 const std = @import("std");
 const rl = @import("raylib");
 
+const coord = @import("coord");
 const terrain = @import("terrain");
 
 const GameWindow = @This();
@@ -12,6 +13,7 @@ const screenHeight = 450;
 
 camera: rl.Camera,
 cube_position: rl.Vector3,
+player_position: rl.Vector3,
 
 pub fn init() !GameWindow {
     rl.initWindow(screenWidth, screenHeight, "Maincraft - Zig Minecraft client by Guigui220D - b1.7.3");
@@ -29,6 +31,7 @@ pub fn init() !GameWindow {
             .projection = .perspective,
         },
         .cube_position = .init(0, 0, 0),
+        .player_position = undefined,
     };
 }
 
@@ -49,13 +52,14 @@ pub fn beginDraw(self: GameWindow) void {
 }
 
 pub fn drawWorld(self: GameWindow, world: terrain.World) void {
-    _ = self;
     var chunk_it = world.chunk_list.iterator();
     while (chunk_it.next()) |entry| {
         if (entry.value_ptr.*.model) |model| {
             model.draw(entry.key_ptr.*);
         }
     }
+
+    rl.drawSphere(self.player_position, 0.4, .dark_purple);
 }
 
 pub fn endDraw(self: GameWindow) void {
@@ -65,4 +69,8 @@ pub fn endDraw(self: GameWindow) void {
 
 pub fn deinit(_: GameWindow) void {
     rl.closeWindow();
+}
+
+pub fn setPlayerMarker(self: *GameWindow, pos: coord.Vec3f) void {
+    self.player_position = .{ .x = @floatCast(pos.x), .y = @floatCast(pos.y), .z = @floatCast(pos.z) };
 }

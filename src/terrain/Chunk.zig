@@ -34,7 +34,6 @@ pub fn initEmpty(alloc: std.mem.Allocator, coords: coord.Chunk) !*Chunk {
 
 // TODO: Understand better the memory layout of data, and also, is a chunk only 128 blocks high?
 pub fn setChunkData(self: *Chunk, data: []const u8, x1: i32, y1: i32, z1: i32, x2: i32, y2: i32, z2: i32) []const u8 {
-    std.debug.print("Setchunkdata on {} ({} {} {}, {} {} {})\n", .{ self.coords, x1, y1, z1, x2, y2, z2 });
     var remaining = data;
 
     const dx = @abs(x2 - x1);

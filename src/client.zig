@@ -169,15 +169,8 @@ pub fn run(alloc: std.mem.Allocator) !void {
                     std.debug.print("\"{s}\"\n", .{chat.message});
                 },
                 .player_look_move_13 => |plm| {
-                    last_plm = .{
-                        .on_ground = plm.on_ground,
-                        .pitch = plm.pitch,
-                        .yaw = plm.yaw,
-                        .x_position = plm.x_position,
-                        .y_position = plm.y_position,
-                        .z_position = plm.z_position,
-                        .y_center_position = plm.y_center_position,
-                    };
+                    last_plm = plm;
+                    window.setPlayerMarker(.{ .x = plm.x_position, .y = plm.y_position, .z = plm.z_position });
                 },
                 .pre_chunk_50 => |pc| {
                     try world.doPreChunk(.{ .x = pc.x_position, .z = pc.z_position }, pc.mode);
@@ -221,6 +214,13 @@ pub fn run(alloc: std.mem.Allocator) !void {
             //enqueuePacket(&out_queue, net.server_bound.Packet10OnGround{ .on_ground = true });
             last_plm.y_position -= 0.1;
             last_plm.y_center_position -= 0.1;
+            if (last_plm.y_center_position < last_plm.y_position) {
+                // TODO: whyyy?? why is this needed
+                const swap = last_plm.y_center_position;
+                last_plm.y_center_position = last_plm.y_position;
+                last_plm.y_position = swap;
+            }
+            //std.debug.print("Dy: {}\n", .{last_plm.y_center_position - last_plm.y_position});
             enqueuePacket(&out_queue, last_plm);
         }
 

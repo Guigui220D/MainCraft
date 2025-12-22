@@ -44,8 +44,8 @@ pub fn build(b: *std.Build) void {
         },
     });
 
-    const io_mod = b.addModule("io", .{
-        .root_source_file = b.path("src/io/io.zig"),
+    const raylib_io_mod = b.addModule("io", .{
+        .root_source_file = b.path("src/frontend/raylib/io.zig"),
         .target = target,
         .imports = &.{
             .{ .name = "raylib", .module = raylib_dep.module("raylib") },
@@ -54,7 +54,24 @@ pub fn build(b: *std.Build) void {
             .{ .name = "coord", .module = coord_mod },
         },
     });
-    io_mod.linkLibrary(raylib_dep.artifact("raylib"));
+    raylib_io_mod.linkLibrary(raylib_dep.artifact("raylib"));
+
+    const dummy_io_mod = b.addModule("io", .{
+        .root_source_file = b.path("src/frontend/dummy/io.zig"),
+        .target = target,
+        .imports = &.{
+            .{ .name = "terrain", .module = terrain_mod },
+            .{ .name = "coord", .module = coord_mod },
+        },
+    });
+
+    // TODO: how to make that a compile parameter
+    const frontend: enum { dummy, raylib } = .raylib;
+
+    const io_mod = switch (frontend) {
+        .dummy => dummy_io_mod,
+        .raylib => raylib_io_mod,
+    };
     terrain_mod.addImport("io", io_mod);
 
     const net_mod = b.addModule("net", .{

@@ -4,12 +4,12 @@ const std = @import("std");
 const net = @import("net.zig");
 const Packets = @import("packets.zig").Packets;
 
-pub const Packet0KeepAlive = @import("server_bound/Packet0KeepAlive.zig");
-pub const Packet1Login = @import("server_bound/Packet1Login.zig");
-pub const Packet2Handshake = @import("server_bound/Packet2Handshake.zig");
-pub const Packet10OnGround = @import("server_bound/Packet10OnGround.zig");
-pub const Packet11PlayerPosition = @import("server_bound/Packet11PlayerPosition.zig");
-pub const Packet13PlayerLookMove = @import("server_bound/Packet13PlayerLookMove.zig");
+pub const Packet0KeepAlive = @import("packets/Packet0KeepAlive.zig");
+pub const Packet1Login = @import("packets/Packet1Login.zig");
+pub const Packet2Handshake = @import("packets/Packet2Handshake.zig");
+pub const Packet10OnGround = @import("packets/Packet10OnGround.zig");
+pub const Packet11PlayerPosition = @import("packets/Packet11PlayerPosition.zig");
+pub const Packet13PlayerLookMove = @import("packets/Packet13PlayerLookMove.zig");
 
 pub const OutboundPacket = union(Packets) {
     /// Send the packet

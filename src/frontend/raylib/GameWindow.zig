@@ -14,6 +14,7 @@ const screenHeight = 450;
 camera: rl.Camera,
 cube_position: rl.Vector3,
 player_position: rl.Vector3,
+first_player_pos: bool = true,
 focused: bool = true,
 
 pub fn init() !GameWindow {
@@ -85,4 +86,9 @@ pub fn deinit(_: GameWindow) void {
 
 pub fn setPlayerMarker(self: *GameWindow, pos: coord.Vec3f) void {
     self.player_position = .{ .x = @floatCast(pos.x), .y = @floatCast(pos.y), .z = @floatCast(pos.z) };
+    // Set camera for the first time
+    if (self.first_player_pos) {
+        self.first_player_pos = false;
+        self.camera.position = self.player_position;
+    }
 }

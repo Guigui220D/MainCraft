@@ -70,7 +70,7 @@ pub fn destroyChunk(self: *Chunk, alloc: std.mem.Allocator) void {
 pub fn updateModel(self: *Chunk, alloc: std.mem.Allocator) !void {
     if (self.model) |old_model|
         old_model.deinit(alloc);
-    self.model = try io.ChunkModel.generateForChunk(alloc, self);
+    self.model = try io.ChunkModel.generateForChunk(alloc, self.*);
 }
 
 pub fn deinit(self: Chunk, alloc: std.mem.Allocator) void {

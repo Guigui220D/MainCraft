@@ -32,10 +32,6 @@
     // Once all dependencies are fetched, `zig build` no longer requires
     // internet connectivity.
     .dependencies = .{
-        .network = .{
-            .url = "https://github.com/ikskuh/zig-network/archive/7947237eec317d9458897f82089f343a05450c2b.tar.gz",
-            .hash = "network-0.1.0-Pm-Agl8xAQBmkwohveGOfTk4zQnuqDs0Ptfbms4KP5Ce",
-        },
         .spsc_queue = .{
             .url = "https://github.com/freref/spsc-queue/archive/3ce8a39c53b026ef42eb569e66bc04c6356869e8.tar.gz",
             .hash = "spsc_queue-0.0.0-AVEoh1VJAAAANyL-T7uKYvwDBTU9R0i42Avs_Bp-43wr",
@@ -43,6 +39,10 @@
         .raylib_zig = .{
             .url = "git+https://github.com/raylib-zig/raylib-zig?ref=devel#a4d18b2d1cf8fdddec68b5b084535fca0475f466",
             .hash = "raylib_zig-5.6.0-dev-KE8REL5MBQAf3p497t52Xw9P7ojndIkVOWPXnLiLLw2P",
+        },
+        .network = .{
+            .url = "https://github.com/ikskuh/zig-network/archive/8913ea90dfa0b065bf98b527abacb0c94b39dbdd.tar.gz",
+            .hash = "network-0.1.0-Pm-AgqgxAQA90YSyPBtiEeSmJZblJW-dWmoTO6YiYdrP",
         },
     },
     .paths = .{

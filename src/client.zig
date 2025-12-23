@@ -22,10 +22,15 @@ fn receiverThread(alloc: std.mem.Allocator, in_stream: *std.Io.Reader, in_queue:
     while (server_running.load(.acquire)) {
         // Read packet
         const incoming_packet = net.readPacket(alloc, in_stream) catch |e| {
+            // Stop server on error (TODO: recoverable errors?)
             server_running.store(false, .release);
-            std.debug.print("{}\n", .{e});
-            if (@errorReturnTrace()) |trace| {
-                std.debug.dumpStackTrace(trace.*);
+            if (e == error.EndOfStream) {
+                std.debug.print("Server closed socket.\n", .{});
+            } else {
+                std.debug.print("{}\n", .{e});
+                if (@errorReturnTrace()) |trace| {
+                    std.debug.dumpStackTrace(trace.*);
+                }
             }
             continue;
         };
@@ -99,7 +104,10 @@ pub fn run(alloc: std.mem.Allocator) !void {
     defer network.deinit();
 
     // Connect TCP socket to server
-    var sock = try network.connectToHost(alloc, "localhost", 25565, .tcp);
+    var sock = network.connectToHost(alloc, "localhost", 25565, .tcp) catch |e| {
+        std.debug.print("Couldn't connect! {}\n", .{e});
+        return;
+    };
 
     const local: network.EndPoint = try sock.getLocalEndPoint();
     const remote: network.EndPoint = try sock.getRemoteEndPoint();

@@ -14,13 +14,16 @@ const screenHeight = 450;
 camera: rl.Camera,
 cube_position: rl.Vector3,
 player_position: rl.Vector3,
+focused: bool = true,
 
 pub fn init() !GameWindow {
+    rl.setConfigFlags(.{ .window_resizable = true, .window_highdpi = true });
     rl.initWindow(screenWidth, screenHeight, "Maincraft - Zig Minecraft client by Guigui220D - b1.7.3");
     errdefer rl.closeWindow();
 
     rl.disableCursor();
     rl.setTargetFPS(60);
+    rl.setExitKey(.f1);
 
     return .{
         .camera = rl.Camera{
@@ -40,13 +43,22 @@ pub fn hasClosed(_: GameWindow) bool {
 }
 
 pub fn update(self: *GameWindow) void {
-    self.camera.update(.free);
+    if (rl.isKeyPressed(.escape) and self.focused) {
+        rl.enableCursor();
+        self.focused = false;
+    }
+    if (rl.isMouseButtonPressed(.left)) {
+        rl.disableCursor();
+        self.focused = true;
+    }
+
+    if (self.focused)
+        self.camera.update(.free);
 }
 
 pub fn beginDraw(self: GameWindow) void {
     rl.beginDrawing();
     defer rl.clearBackground(.white);
-    rl.drawText("Hello from Maincraft", 190, 200, 20, .light_gray);
 
     self.camera.begin();
 }

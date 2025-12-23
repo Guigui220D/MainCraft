@@ -179,7 +179,6 @@ pub fn run(alloc: std.mem.Allocator) !void {
                 .player_look_move_13 => |plm| {
                     last_plm = plm;
                     window.setPlayerMarker(.{ .x = plm.x_position, .y = plm.y_position, .z = plm.z_position });
-                    std.debug.print("{any}\n", .{packet});
                 },
                 .pre_chunk_50 => |pc| {
                     try world.doPreChunk(.{ .x = pc.x_position, .z = pc.z_position }, pc.mode);

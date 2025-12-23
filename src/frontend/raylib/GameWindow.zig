@@ -26,6 +26,8 @@ pub fn init() !GameWindow {
     rl.setTargetFPS(60);
     rl.setExitKey(.f1);
 
+    rl.setTraceLogLevel(.warning);
+
     return .{
         .camera = rl.Camera{
             .position = .init(0, 120, 0),

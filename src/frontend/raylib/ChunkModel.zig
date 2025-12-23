@@ -11,7 +11,7 @@ const ChunkModel = @This();
 // TEMPORARY for debug
 var col_rand: ?std.Random.DefaultPrng = null;
 color: rl.Color,
-mesh: *rl.Mesh,
+meshes: []rl.Mesh,
 dummy: rl.Model, // TODO: proper material
 
 pub fn generateForChunk(alloc: std.mem.Allocator, chunk: Chunk) !ChunkModel {
@@ -19,18 +19,25 @@ pub fn generateForChunk(alloc: std.mem.Allocator, chunk: Chunk) !ChunkModel {
         col_rand = std.Random.DefaultPrng.init(42);
     }
 
-    var mesh = try alloc.create(rl.Mesh);
-    errdefer alloc.destroy(mesh);
-    mesh.* = try generateMeshForChunk(chunk);
-    errdefer mesh.unload();
-    rl.uploadMesh(mesh, false);
+    // TODO: find out worst case to pre-alloc
+    var meshes: std.ArrayList(rl.Mesh) = .{};
+    errdefer {
+        for (meshes.items) |mesh|
+            mesh.unload();
+        meshes.deinit(alloc);
+    }
+
+    try generateMeshesForChunk(chunk, alloc, &meshes);
+
+    for (meshes.items) |*mesh|
+        rl.uploadMesh(mesh, false);
 
     const dummy = try rl.loadModel("res/test.glb");
     errdefer dummy.unload();
 
     return .{
         .color = .fromInt(col_rand.?.random().int(u32) | 0xff),
-        .mesh = mesh,
+        .meshes = try meshes.toOwnedSlice(alloc),
         .dummy = dummy,
     };
 }
@@ -45,17 +52,20 @@ pub fn draw(self: ChunkModel, pos: coord.Chunk) void {
 
     // Draw chunk
     const transform: rl.Matrix = .translate(@as(f32, @floatFromInt(pos.x * 16)), 0, @as(f32, @floatFromInt(pos.z * 16)));
-    rl.drawMesh(self.mesh.*, self.dummy.materials[0], transform);
+    for (self.meshes) |mesh|
+        rl.drawMesh(mesh, self.dummy.materials[0], transform);
 }
 
 pub fn deinit(self: ChunkModel, alloc: std.mem.Allocator) void {
-    self.mesh.unload();
-    alloc.destroy(self.mesh);
+    for (self.meshes) |mesh|
+        mesh.unload();
+    alloc.free(self.meshes);
     self.dummy.unload();
 }
 
 /// Renders a chunk into a mesh
-fn generateMeshForChunk(chunk: Chunk) !rl.Mesh {
+fn generateMeshesForChunk(chunk: Chunk, alloc: std.mem.Allocator, meshes: *std.ArrayList(rl.Mesh)) !void {
+    // TODO: redo this whole thing: this is extremely ugly and WILL leak in case of error
     var vertices: std.ArrayList(f32) = try .initCapacity(rl.mem, (std.math.maxInt(c_ushort) * 3 + 1));
     errdefer vertices.deinit(rl.mem);
 
@@ -75,8 +85,41 @@ fn generateMeshForChunk(chunk: Chunk) !rl.Mesh {
         const x: i32 = @intCast(i / (128 * 16));
 
         // TODO: support for multiple meshes per chunk
-        if (id > std.math.maxInt(c_ushort) - 8)
-            break; // Can't fit more vertices
+        if (id > std.math.maxInt(c_ushort) - 8) {
+            // Can't fit more vertices
+            id = 0;
+
+            const tri_count = indices.items.len / 3;
+            const vert_count = vertices.items.len / 3;
+
+            if (tri_count > 0) {
+                // Frankenstein mesh
+                // TODO: proper errdefers
+                try meshes.append(alloc, rl.Mesh{
+                    .animNormals = @ptrFromInt(0),
+                    .animVertices = @ptrFromInt(0),
+                    .boneCount = 0,
+                    .boneIds = @ptrFromInt(0),
+                    .boneMatrices = @ptrFromInt(0),
+                    .boneWeights = @ptrFromInt(0),
+                    .colors = @ptrCast(try colors.toOwnedSlice(rl.mem)),
+                    .indices = @ptrCast(try indices.toOwnedSlice(rl.mem)),
+                    .normals = @ptrFromInt(0),
+                    .tangents = @ptrFromInt(0),
+                    .texcoords = @ptrFromInt(0),
+                    .texcoords2 = @ptrFromInt(0),
+                    .triangleCount = @intCast(tri_count),
+                    .vaoId = 0,
+                    .vboId = @ptrFromInt(0),
+                    .vertexCount = @intCast(vert_count),
+                    .vertices = @ptrCast(try vertices.toOwnedSlice(rl.mem)),
+                });
+            }
+
+            vertices = try .initCapacity(rl.mem, (std.math.maxInt(c_ushort) * 3 + 1));
+            indices = .{};
+            colors = .{};
+        }
 
         // TODO: helper function for that
         // TODO: model per block id (reuse vertices where possible)
@@ -146,25 +189,27 @@ fn generateMeshForChunk(chunk: Chunk) !rl.Mesh {
     const tri_count = indices.items.len / 3;
     const vert_count = vertices.items.len / 3;
 
-    // Frankenstein mesh
-    // TODO: proper errdefers
-    return rl.Mesh{
-        .animNormals = @ptrFromInt(0),
-        .animVertices = @ptrFromInt(0),
-        .boneCount = 0,
-        .boneIds = @ptrFromInt(0),
-        .boneMatrices = @ptrFromInt(0),
-        .boneWeights = @ptrFromInt(0),
-        .colors = @ptrCast(try colors.toOwnedSlice(rl.mem)),
-        .indices = @ptrCast(try indices.toOwnedSlice(rl.mem)),
-        .normals = @ptrFromInt(0),
-        .tangents = @ptrFromInt(0),
-        .texcoords = @ptrFromInt(0),
-        .texcoords2 = @ptrFromInt(0),
-        .triangleCount = @intCast(tri_count),
-        .vaoId = 0,
-        .vboId = @ptrFromInt(0),
-        .vertexCount = @intCast(vert_count),
-        .vertices = @ptrCast(try vertices.toOwnedSlice(rl.mem)),
-    };
+    if (tri_count > 0) {
+        // Frankenstein mesh
+        // TODO: proper errdefers
+        try meshes.append(alloc, rl.Mesh{
+            .animNormals = @ptrFromInt(0),
+            .animVertices = @ptrFromInt(0),
+            .boneCount = 0,
+            .boneIds = @ptrFromInt(0),
+            .boneMatrices = @ptrFromInt(0),
+            .boneWeights = @ptrFromInt(0),
+            .colors = @ptrCast(try colors.toOwnedSlice(rl.mem)),
+            .indices = @ptrCast(try indices.toOwnedSlice(rl.mem)),
+            .normals = @ptrFromInt(0),
+            .tangents = @ptrFromInt(0),
+            .texcoords = @ptrFromInt(0),
+            .texcoords2 = @ptrFromInt(0),
+            .triangleCount = @intCast(tri_count),
+            .vaoId = 0,
+            .vboId = @ptrFromInt(0),
+            .vertexCount = @intCast(vert_count),
+            .vertices = @ptrCast(try vertices.toOwnedSlice(rl.mem)),
+        });
+    }
 }

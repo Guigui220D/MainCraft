@@ -5,6 +5,7 @@ const std = @import("std");
 const rl = @import("raylib");
 const coord = @import("coord");
 const Chunk = @import("terrain").Chunk;
+const blocks = @import("blocks").table;
 
 const ChunkModel = @This();
 
@@ -263,7 +264,7 @@ fn generateMeshesForChunk(chunk: Chunk, alloc: std.mem.Allocator, meshes: *std.A
         try colors.appendNTimes(rl.mem, 0xffffffff, 8 * 3);
 
         // TODO: helper function for that
-        const block_tex_id = 4;
+        const block_tex_id = blocks[block_id].tex_id;
         const tx: f32 = @as(f32, @floatFromInt(block_tex_id % 16)) / 16.0;
         const ty: f32 = @as(f32, @floatFromInt(block_tex_id / 16)) / 16.0;
 

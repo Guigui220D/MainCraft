@@ -44,6 +44,11 @@ pub fn build(b: *std.Build) void {
         },
     });
 
+    const blocks_mod = b.addModule("blocks", .{
+        .root_source_file = b.path("src/blocks/blocks.zig"),
+        .target = target,
+    });
+
     const raylib_io_mod = b.addModule("io", .{
         .root_source_file = b.path("src/frontend/raylib/io.zig"),
         .target = target,
@@ -52,6 +57,7 @@ pub fn build(b: *std.Build) void {
             .{ .name = "raygui", .module = raylib_dep.module("raygui") },
             .{ .name = "terrain", .module = terrain_mod },
             .{ .name = "coord", .module = coord_mod },
+            .{ .name = "blocks", .module = blocks_mod },
         },
     });
     raylib_io_mod.linkLibrary(raylib_dep.artifact("raylib"));
@@ -99,6 +105,7 @@ pub fn build(b: *std.Build) void {
                 .{ .name = "io", .module = io_mod },
                 .{ .name = "coord", .module = coord_mod },
                 .{ .name = "terrain", .module = terrain_mod },
+                .{ .name = "blocks", .module = blocks_mod },
                 // Dependencies
                 .{ .name = "network", .module = network_dep.module("network") },
                 .{ .name = "spsc_queue", .module = spsc_queue_dep.module("spsc_queue") },
@@ -157,6 +164,11 @@ pub fn build(b: *std.Build) void {
     });
     const run_terrain_tests = b.addRunArtifact(terrain_mod_tests);
 
+    const blocks_mod_tests = b.addTest(.{
+        .root_module = blocks_mod,
+    });
+    const run_blocks_tests = b.addRunArtifact(blocks_mod_tests);
+
     // Client tests
     const exe_tests = b.addTest(.{
         .root_module = exe.root_module,
@@ -172,6 +184,7 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_io_tests.step);
     test_step.dependOn(&run_coord_tests.step);
     test_step.dependOn(&run_terrain_tests.step);
+    test_step.dependOn(&run_blocks_tests.step);
     test_step.dependOn(&run_exe_tests.step);
 
     // Individual test steps
@@ -182,5 +195,6 @@ pub fn build(b: *std.Build) void {
     b.step("test_io", "Run game i/o module tests").dependOn(&run_nbt_tests.step);
     b.step("test_coord", "Run coordinates module tests").dependOn(&run_nbt_tests.step);
     b.step("test_terrain", "Run terrain module tests").dependOn(&run_nbt_tests.step);
+    b.step("test_blocks", "Run blocks module tests").dependOn(&run_nbt_tests.step);
     b.step("test_exe", "Run NBT module tests").dependOn(&run_exe_tests.step);
 }

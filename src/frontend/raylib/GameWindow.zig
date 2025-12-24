@@ -17,14 +17,19 @@ player_position: rl.Vector3,
 first_player_pos: bool = true,
 focused: bool = true,
 
-pub fn init() !GameWindow {
+pub fn init(alloc: std.mem.Allocator) !GameWindow {
     rl.setConfigFlags(.{ .window_resizable = true, .window_highdpi = true });
-    rl.initWindow(screenWidth, screenHeight, "Maincraft - Zig Minecraft client by Guigui220D - b1.7.3");
+    rl.initWindow(screenWidth, screenHeight, "MainCraft");
     errdefer rl.closeWindow();
 
     rl.disableCursor();
     rl.setTargetFPS(60);
     rl.setExitKey(.f1);
+
+    if (getSplashTitle(alloc) catch null) |ti| {
+        rl.setWindowTitle(ti);
+        alloc.free(ti);
+    }
 
     rl.setTraceLogLevel(.warning);
 
@@ -93,4 +98,33 @@ pub fn setPlayerMarker(self: *GameWindow, pos: coord.Vec3f) void {
         self.first_player_pos = false;
         self.camera.position = self.player_position;
     }
+}
+
+/// Silly thing to get a random splash screen line from the original minecraft
+fn getSplashTitle(alloc: std.mem.Allocator) ![:0]const u8 {
+    var splashes_file = try std.fs.cwd().openFile("res/jar/minecraft/title/splashes.txt", .{});
+    defer splashes_file.close();
+
+    var reader = splashes_file.reader(&.{});
+    const lines = try reader.interface.allocRemaining(alloc, .unlimited);
+    defer alloc.free(lines);
+
+    const line_count = std.mem.count(u8, lines, "\n");
+
+    var rng = std.Random.DefaultPrng.init(@bitCast(std.time.timestamp()));
+    const random = rng.random();
+
+    const chosen_line = random.intRangeLessThan(usize, 0, line_count);
+    var i: usize = 0;
+
+    var line_it = std.mem.TokenIterator(u8, .scalar){ .buffer = lines, .delimiter = '\n', .index = 0 };
+    while (line_it.next()) |line| {
+        if (i == chosen_line) {
+            return alloc.dupeZ(u8, line[0 .. line.len - 1]);
+        }
+
+        i += 1;
+    }
+
+    unreachable;
 }

@@ -8,7 +8,7 @@ const terrain = @import("terrain");
 
 const GameWindow = @This();
 
-pub fn init() !GameWindow {
+pub fn init(_: std.mem.Allocator) !GameWindow {
     std.Thread.sleep(2000000000);
     return .{};
 }

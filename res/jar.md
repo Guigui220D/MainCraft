@@ -1,0 +1,1 @@
+Decompress the jar (zip) into jar so the game can load ressources

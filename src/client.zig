@@ -149,7 +149,7 @@ pub fn run(alloc: std.mem.Allocator) !void {
     enqueuePacket(&out_queue, net.server_bound.Packet2Handshake{ .username = "MainCraft1" });
     var is_connected = false;
 
-    var window = try io.GameWindow.init();
+    var window = try io.GameWindow.init(alloc);
     defer window.deinit();
 
     var world: World = try .init(alloc);

@@ -31,7 +31,7 @@ pub fn addEntity(self: *EntityManager, id: i32, pos: coord.Vec3f, ent_type: Enti
     const new_ent = try self.alloc.create(Entity);
     errdefer self.alloc.destroy(new_ent);
 
-    new_ent.* = .{ .pos = pos, .ent_type = ent_type };
+    new_ent.* = .{ .pos = pos, .data = .initData(ent_type) };
 
     if (self.entities.contains(id))
         return error.EntityAlreadyExists;
@@ -39,6 +39,21 @@ pub fn addEntity(self: *EntityManager, id: i32, pos: coord.Vec3f, ent_type: Enti
     try self.entities.put(id, new_ent);
 
     std.debug.print("Added {} entity {} at {any}\n", .{ ent_type, id, pos });
+}
+
+pub fn addOtherPlayer(self: *EntityManager, id: i32, pos: coord.Vec3f, name: []const u8) !void {
+    const new_ent = try self.alloc.create(Entity);
+    errdefer self.alloc.destroy(new_ent);
+
+    // TODO: own name (dupe it)
+    new_ent.* = .{ .pos = pos, .data = .{ .player = .{ .username = name } } };
+
+    if (self.entities.contains(id))
+        return error.EntityAlreadyExists;
+
+    try self.entities.put(id, new_ent);
+
+    std.debug.print("Added player {} named \"{s}\" at {any}\n", .{ id, name, pos });
 }
 
 pub fn removeEntity(self: *EntityManager, id: i32) !void {

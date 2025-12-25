@@ -185,31 +185,35 @@ pub fn run(alloc: std.mem.Allocator) !void {
                     window.setPlayerMarker(.{ .x = plm.x_position, .y = plm.y_position, .z = plm.z_position });
                 },
                 .named_entity_spawn_20 => |sp| {
-                    try entities.addEntity(
+                    try entities.addOtherPlayer(
                         sp.entity_id,
                         .fromIntsDiv32(sp.x_position, sp.y_position, sp.z_position),
-                        .player,
+                        sp.name,
                     );
                 },
                 .pickup_spawn_21 => |sp| {
+                    std.debug.print("Spawning item\n", .{});
                     try entities.addEntity(
                         sp.entity_id,
                         .fromIntsDiv32(sp.x_position, sp.y_position, sp.z_position),
                         .item,
                     );
                 },
-                .inanimate_spawn_23 => |sp| {
-                    try entities.addEntity(
-                        sp.entity_id,
-                        .fromIntsDiv32(sp.x_position, sp.y_position, sp.z_position),
-                        .inanimate,
-                    );
+                .inanimate_spawn_23 => |_| {
+                    std.debug.print("Spawning inanimate\n", .{});
+                    // TODO: "vehicle" (inanimate) entities
+                    //try entities.addEntity(
+                    //    sp.entity_id,
+                    //    .fromIntsDiv32(sp.x_position, sp.y_position, sp.z_position),
+                    //    @enumFromInt(sp.entity_type),
+                    //);
                 },
                 .mob_spawn_24 => |sp| {
+                    std.debug.print("Spawning mob\n", .{});
                     try entities.addEntity(
                         sp.entity_id,
                         .fromIntsDiv32(sp.x_position, sp.y_position, sp.z_position),
-                        .mob,
+                        @enumFromInt(sp.entity_type),
                     );
                 },
                 .destroy_entity_29 => |stroy| {

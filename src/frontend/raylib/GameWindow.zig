@@ -17,6 +17,8 @@ player_position: rl.Vector3,
 first_player_pos: bool = true,
 focused: bool = true,
 
+// TODO: add debug compass
+
 pub fn init(alloc: std.mem.Allocator) !GameWindow {
     rl.setConfigFlags(.{ .window_resizable = true, .window_highdpi = true });
     rl.initWindow(screenWidth, screenHeight, "MainCraft");

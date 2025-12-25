@@ -1,4 +1,4 @@
-//! Not sure what is this packet. Seems related to both the bed and the weather
+//! Packet updating the weather
 
 const std = @import("std");
 const net = @import("../net.zig");
@@ -13,4 +13,4 @@ pub fn receive(_: std.mem.Allocator, stream: *std.Io.Reader) !@This() {
     };
 }
 
-pub const tag = net.Packets.bed_70;
+pub const tag = net.Packets.weather_70;

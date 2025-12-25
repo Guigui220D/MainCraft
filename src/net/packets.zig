@@ -80,8 +80,8 @@ pub const Packets = enum(u8) {
     unused_68 = 68,
     unused_69 = 69,
     //
-    bed_70 = 70,
-    weather_71 = 71,
+    weather_70 = 70,
+    thunder_71 = 71,
     //
     unused_72 = 72,
     unused_73 = 73,

@@ -76,3 +76,13 @@ pub fn updateModel(self: *Chunk, alloc: std.mem.Allocator) !void {
 pub fn deinit(self: Chunk, alloc: std.mem.Allocator) void {
     alloc.free(self.blocks);
 }
+
+/// Pass an index of the blocks array, get the corresponding block coords
+pub inline fn coordFromIndex(index: usize) coord.Block {
+    const i: i32 = @intCast(index);
+    return .{
+        .x = @divFloor(i, 128 * 16),
+        .y = @mod(i, 128),
+        .z = @mod(@divFloor(i, 128), 16),
+    };
+}

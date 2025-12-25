@@ -17,7 +17,7 @@ pub fn hasClosed(_: GameWindow) bool {
     return false;
 }
 
-pub fn update(_: *GameWindow) void {
+pub fn update(_: *GameWindow) !void {
     // Slow down to reach 60 fps
     std.Thread.sleep(16000000);
 }
@@ -25,6 +25,8 @@ pub fn update(_: *GameWindow) void {
 pub fn beginDraw(_: GameWindow) void {}
 
 pub fn drawWorld(_: GameWindow, _: terrain.World) void {}
+
+pub fn drawGui(_: GameWindow) void {}
 
 pub fn endDraw(_: GameWindow) void {}
 

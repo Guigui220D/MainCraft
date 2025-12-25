@@ -63,9 +63,6 @@ pub fn draw(self: ChunkModel, pos: coord.Chunk) void {
     rl.drawCubeWires(.{ .x = @floatFromInt(pos.x * 16 + 8), .y = 128, .z = @floatFromInt(pos.z * 16 + 8) }, 16, 256, 16, .red);
     rl.drawPlane(.{ .x = @floatFromInt(pos.x * 16 + 8), .y = 0, .z = @floatFromInt(pos.z * 16 + 8) }, .{ .x = 16, .y = 16 }, self.debug_color);
 
-    //if (pos.x != 1 or pos.z != -6)
-    //    return;
-
     // Draw chunk
     const transform: rl.Matrix = .translate(@as(f32, @floatFromInt(pos.x * 16)), 0, @as(f32, @floatFromInt(pos.z * 16)));
     for (self.meshes) |mesh|
@@ -134,9 +131,7 @@ fn generateSingleMesh(alloc: std.mem.Allocator, block_data: []const u8, offset: 
             continue;
 
         // Block coordinates
-        const y: i32 = @intCast(i % 128);
-        const z: i32 = @intCast(i / 128 % 16);
-        const x: i32 = @intCast(i / (128 * 16));
+        const xyz = Chunk.coordFromIndex(i);
 
         // TODO: obtain programatically the needed amount of vertices (depending on the block and circumstances)
         const needed_vertices = 8 * 3;
@@ -147,7 +142,7 @@ fn generateSingleMesh(alloc: std.mem.Allocator, block_data: []const u8, offset: 
 
         // Add vertices
         // TODO: LESS VERTICES MEANS LESS MESHES TO UPLOAD
-        try addProtoCubeVertices(&vertices, x, y, z);
+        try addProtoCubeVertices(&vertices, xyz.x, xyz.y, xyz.z);
 
         // Add triangles
         try addProtoCubeTris(&indices, next_id);

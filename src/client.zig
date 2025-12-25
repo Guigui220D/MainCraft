@@ -238,9 +238,11 @@ pub fn run(alloc: std.mem.Allocator) !void {
             continue;
         }
 
-        window.update();
+        try window.update();
+
         window.beginDraw();
         window.drawWorld(world);
+        window.drawGui();
         window.endDraw();
     }
 

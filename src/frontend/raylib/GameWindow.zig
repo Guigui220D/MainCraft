@@ -13,13 +13,17 @@ const GameWindow = @This();
 const screenWidth = 800;
 const screenHeight = 450;
 
+// Debug compass
+var compass: rl.Model = undefined;
+
 camera: rl.Camera,
 cube_position: rl.Vector3,
 player_position: rl.Vector3,
 first_player_pos: bool = true,
 focused: bool = true,
-
-// TODO: add debug compass
+f3_enabled: bool = true,
+f3_buf: [512]u8 = undefined,
+f3_str: [:0]const u8 = undefined,
 
 pub fn init(alloc: std.mem.Allocator) !GameWindow {
     rl.setConfigFlags(.{ .window_resizable = true, .window_highdpi = true });
@@ -40,12 +44,15 @@ pub fn init(alloc: std.mem.Allocator) !GameWindow {
     try ChunkModel.initMesher();
     errdefer ChunkModel.deinitMesher();
 
+    compass = try rl.loadModel("res/compass.glb");
+    errdefer compass.unload();
+
     return .{
         .camera = rl.Camera{
             .position = .init(0, 120, 0),
             .target = .init(10, 120, 0),
             .up = .init(0, 1, 0),
-            .fovy = 45,
+            .fovy = 60,
             .projection = .perspective,
         },
         .cube_position = .init(0, 0, 0),
@@ -57,28 +64,41 @@ pub fn hasClosed(_: GameWindow) bool {
     return rl.windowShouldClose();
 }
 
-pub fn update(self: *GameWindow) void {
-    if (rl.isKeyPressed(.escape) and self.focused) {
-        rl.enableCursor();
-        self.focused = false;
-    }
+pub fn update(self: *GameWindow) !void {
     if (rl.isMouseButtonPressed(.left)) {
         rl.disableCursor();
         self.focused = true;
     }
 
+    if (!self.focused)
+        return;
+
+    if (rl.isKeyPressed(.escape) and self.focused) {
+        rl.enableCursor();
+        self.focused = false;
+    }
+
+    if (rl.isKeyPressed(.f3)) {
+        self.f3_enabled = !self.f3_enabled;
+    }
+
     if (self.focused)
         self.camera.update(.free);
+
+    if (self.f3_enabled) {
+        const pos = self.camera.position;
+        self.f3_str = try std.fmt.bufPrintZ(&self.f3_buf, "x: {}\ny: {}\nz: {}\n", .{ pos.x, pos.y, pos.z });
+    }
 }
 
-pub fn beginDraw(self: GameWindow) void {
+pub fn beginDraw(_: GameWindow) void {
     rl.beginDrawing();
     defer rl.clearBackground(.white);
-
-    self.camera.begin();
 }
 
 pub fn drawWorld(self: GameWindow, world: terrain.World) void {
+    self.camera.begin();
+
     var chunk_it = world.chunk_list.iterator();
     while (chunk_it.next()) |entry| {
         if (entry.value_ptr.*.model) |model| {
@@ -87,14 +107,28 @@ pub fn drawWorld(self: GameWindow, world: terrain.World) void {
     }
 
     rl.drawSphere(self.player_position, 0.4, .dark_purple);
+
+    if (self.f3_enabled) {
+        const camdir = self.camera.target.subtract(self.camera.position).normalize();
+        const sidedir = camdir.crossProduct(self.camera.up).normalize();
+        const pos = self.camera.position.add(camdir.scale(0.1)).add(sidedir.scale(0.0));
+        rl.drawModel(compass, pos, 0.005, .white);
+    }
+
+    self.camera.end();
 }
 
-pub fn endDraw(self: GameWindow) void {
-    self.camera.end();
+pub fn drawGui(self: GameWindow) void {
+    if (self.f3_enabled)
+        rl.drawText(self.f3_str, 10, 10, 20, .black);
+}
+
+pub fn endDraw(_: GameWindow) void {
     rl.endDrawing();
 }
 
 pub fn deinit(_: GameWindow) void {
+    compass.unload();
     ChunkModel.deinitMesher();
     rl.closeWindow();
 }

@@ -10,17 +10,37 @@ const blocks = @import("blocks").table;
 const ChunkModel = @This();
 
 // TEMPORARY for debug
-var col_rand: ?std.Random.DefaultPrng = null;
-color: rl.Color,
+var col_rand: std.Random.DefaultPrng = undefined;
+// Material
+var texture: rl.Texture = undefined;
+var material: rl.Material = undefined;
+
+debug_color: rl.Color,
 meshes: []rl.Mesh,
-texture: rl.Texture, // TODO: this should be static
-material: rl.Material, // TODO: this should be static
 
+/// Init the meshing system (static ressources)
+pub fn initMesher() !void {
+    // Load texture from jar
+    texture = try rl.loadTexture("res/jar/minecraft/terrain.png");
+    errdefer texture.unload();
+
+    // Init material
+    material = try rl.loadMaterialDefault();
+    errdefer material.unload();
+    material.maps[0].texture = texture;
+
+    // Debug color random
+    col_rand = std.Random.DefaultPrng.init(42);
+}
+
+/// Deinit the meshing system (static ressources)
+pub fn deinitMesher() void {
+    material.unload();
+    texture.unload();
+}
+
+/// Prepare the ChunkModel for a chunk (part of the API)
 pub fn generateForChunk(alloc: std.mem.Allocator, chunk: Chunk) !ChunkModel {
-    if (col_rand == null) {
-        col_rand = std.Random.DefaultPrng.init(42);
-    }
-
     const meshes = try generateMeshesForChunk(alloc, chunk);
     errdefer {
         for (meshes) |mesh|
@@ -32,27 +52,16 @@ pub fn generateForChunk(alloc: std.mem.Allocator, chunk: Chunk) !ChunkModel {
     for (meshes) |*mesh|
         rl.uploadMesh(mesh, false);
 
-    // Load texture from jar
-    var texture = try rl.loadTexture("res/jar/minecraft/terrain.png");
-    errdefer texture.unload();
-
-    var material = try rl.loadMaterialDefault();
-    errdefer material.unload();
-
-    material.maps[0].texture = texture;
-
     return .{
-        .color = .fromInt(col_rand.?.random().int(u32) | 0xff),
+        .debug_color = .fromInt(col_rand.random().int(u32) | 0xff),
         .meshes = meshes,
-        .texture = texture,
-        .material = material,
     };
 }
 
 pub fn draw(self: ChunkModel, pos: coord.Chunk) void {
     // Draw chunk bottom/bounds (debug)
     rl.drawCubeWires(.{ .x = @floatFromInt(pos.x * 16 + 8), .y = 128, .z = @floatFromInt(pos.z * 16 + 8) }, 16, 256, 16, .red);
-    rl.drawPlane(.{ .x = @floatFromInt(pos.x * 16 + 8), .y = 0, .z = @floatFromInt(pos.z * 16 + 8) }, .{ .x = 16, .y = 16 }, self.color);
+    rl.drawPlane(.{ .x = @floatFromInt(pos.x * 16 + 8), .y = 0, .z = @floatFromInt(pos.z * 16 + 8) }, .{ .x = 16, .y = 16 }, self.debug_color);
 
     //if (pos.x != 1 or pos.z != -6)
     //    return;
@@ -60,15 +69,13 @@ pub fn draw(self: ChunkModel, pos: coord.Chunk) void {
     // Draw chunk
     const transform: rl.Matrix = .translate(@as(f32, @floatFromInt(pos.x * 16)), 0, @as(f32, @floatFromInt(pos.z * 16)));
     for (self.meshes) |mesh|
-        rl.drawMesh(mesh, self.material, transform);
+        rl.drawMesh(mesh, material, transform);
 }
 
 pub fn deinit(self: ChunkModel, alloc: std.mem.Allocator) void {
     for (self.meshes) |mesh|
         mesh.unload();
     alloc.free(self.meshes);
-    self.material.unload();
-    self.texture.unload();
 }
 
 /// Renders a chunk into a mesh

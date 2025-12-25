@@ -6,6 +6,8 @@ const rl = @import("raylib");
 const coord = @import("coord");
 const terrain = @import("terrain");
 
+const ChunkModel = @import("ChunkModel.zig");
+
 const GameWindow = @This();
 
 const screenWidth = 800;
@@ -34,6 +36,9 @@ pub fn init(alloc: std.mem.Allocator) !GameWindow {
     }
 
     rl.setTraceLogLevel(.warning);
+
+    try ChunkModel.initMesher();
+    errdefer ChunkModel.deinitMesher();
 
     return .{
         .camera = rl.Camera{
@@ -90,6 +95,7 @@ pub fn endDraw(self: GameWindow) void {
 }
 
 pub fn deinit(_: GameWindow) void {
+    ChunkModel.deinitMesher();
     rl.closeWindow();
 }
 

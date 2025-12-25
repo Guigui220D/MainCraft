@@ -86,6 +86,13 @@ pub fn drawWorld(self: GameWindow, world: terrain.World) void {
         }
     }
 
+    chunk_it = world.chunk_list.iterator();
+    while (chunk_it.next()) |entry| {
+        if (entry.value_ptr.*.model) |model| {
+            model.drawTransparentLayer(entry.key_ptr.*);
+        }
+    }
+
     rl.drawSphere(self.player_position, 0.4, .dark_purple);
 }
 

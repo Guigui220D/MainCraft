@@ -9,13 +9,13 @@ fn texpos(x: comptime_int, y: comptime_int) comptime_int {
 /// Table of all block types
 pub const table = [256]Block{
     // 0
-    .{ .name = "air" },
+    .{ .name = "air", .is_transparent = true },
     .{ .name = "stone", .tex_id = 1 },
     .{ .name = "grass", .tex_id = 3 },
     .{ .name = "dirt", .tex_id = 2 },
     .{ .name = "cobblestone", .tex_id = texpos(0, 1) },
     .{ .name = "planks", .tex_id = 4 },
-    .{ .name = "sampling", .tex_id = 15 },
+    .{ .name = "sapling", .tex_id = 15, .is_transparent = true },
     .{ .name = "bedrock", .tex_id = texpos(1, 1) },
     .{ .name = "water_moving", .tex_id = texpos(15, 12) },
     .{ .name = "water_still", .tex_id = texpos(15, 12) },
@@ -28,7 +28,7 @@ pub const table = [256]Block{
     // 16
     .{},
     .{ .name = "wood", .tex_id = texpos(4, 1) },
-    .{ .name = "leaves", .tex_id = texpos(1, 9) }, // TODO: not the actual texid
+    .{ .name = "leaves", .tex_id = texpos(4, 3), .is_transparent = true },
     .{},
     .{},
     .{},
@@ -41,7 +41,7 @@ pub const table = [256]Block{
     .{},
     .{},
     .{},
-    .{ .name = "tallgrass", .tex_id = texpos(7, 2) },
+    .{ .name = "tallgrass", .tex_id = texpos(7, 2), .is_transparent = true },
     // 32
     .{},
     .{},
@@ -95,7 +95,7 @@ pub const table = [256]Block{
     .{},
     // 80
     .{},
-    .{ .name = "cactus", .tex_id = texpos(6, 4) },
+    .{ .name = "cactus", .tex_id = texpos(6, 4), .is_transparent = true },
     .{},
     .{},
     .{},

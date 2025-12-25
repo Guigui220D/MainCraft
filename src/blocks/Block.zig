@@ -2,3 +2,4 @@
 
 tex_id: u8 = 0,
 name: []const u8 = "error",
+is_transparent: bool = false,

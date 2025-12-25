@@ -17,6 +17,8 @@ var material: rl.Material = undefined;
 
 debug_color: rl.Color,
 meshes: []rl.Mesh,
+// TODO: investigate how transparency can be done better
+transparent_meshes: []rl.Mesh,
 
 /// Init the meshing system (static ressources)
 pub fn initMesher() !void {
@@ -41,20 +43,28 @@ pub fn deinitMesher() void {
 
 /// Prepare the ChunkModel for a chunk (part of the API)
 pub fn generateForChunk(alloc: std.mem.Allocator, chunk: Chunk) !ChunkModel {
-    const meshes = try generateMeshesForChunk(alloc, chunk);
+    const meshes, const transparent_meshes = try generateMeshesForChunk(alloc, chunk);
     errdefer {
         for (meshes) |mesh|
             mesh.unload();
         alloc.free(meshes);
+
+        for (transparent_meshes) |mesh|
+            mesh.unload();
+        alloc.free(transparent_meshes);
     }
 
     // Upload generated meshes
     for (meshes) |*mesh|
         rl.uploadMesh(mesh, false);
 
+    for (transparent_meshes) |*mesh|
+        rl.uploadMesh(mesh, false);
+
     return .{
         .debug_color = .fromInt(col_rand.random().int(u32) | 0xff),
         .meshes = meshes,
+        .transparent_meshes = transparent_meshes,
     };
 }
 
@@ -63,12 +73,16 @@ pub fn draw(self: ChunkModel, pos: coord.Chunk) void {
     rl.drawCubeWires(.{ .x = @floatFromInt(pos.x * 16 + 8), .y = 128, .z = @floatFromInt(pos.z * 16 + 8) }, 16, 256, 16, .red);
     rl.drawPlane(.{ .x = @floatFromInt(pos.x * 16 + 8), .y = 0, .z = @floatFromInt(pos.z * 16 + 8) }, .{ .x = 16, .y = 16 }, self.debug_color);
 
-    //if (pos.x != 1 or pos.z != -6)
-    //    return;
-
     // Draw chunk
     const transform: rl.Matrix = .translate(@as(f32, @floatFromInt(pos.x * 16)), 0, @as(f32, @floatFromInt(pos.z * 16)));
     for (self.meshes) |mesh|
+        rl.drawMesh(mesh, material, transform);
+}
+
+pub fn drawTransparentLayer(self: ChunkModel, pos: coord.Chunk) void {
+    // Draw chunk
+    const transform: rl.Matrix = .translate(@as(f32, @floatFromInt(pos.x * 16)), 0, @as(f32, @floatFromInt(pos.z * 16)));
+    for (self.transparent_meshes) |mesh|
         rl.drawMesh(mesh, material, transform);
 }
 
@@ -79,32 +93,57 @@ pub fn deinit(self: ChunkModel, alloc: std.mem.Allocator) void {
 }
 
 /// Renders a chunk into a mesh
-fn generateMeshesForChunk(alloc: std.mem.Allocator, chunk: Chunk) ![]rl.Mesh {
+fn generateMeshesForChunk(alloc: std.mem.Allocator, chunk: Chunk) !struct { []rl.Mesh, []rl.Mesh } {
     // Meshes arraylist
     // TODO: find out worst case to pre-alloc
     var meshes: std.ArrayList(rl.Mesh) = .{};
+    var transparent_meshes: std.ArrayList(rl.Mesh) = .{};
     errdefer {
         for (meshes.items) |mesh|
             mesh.unload();
         meshes.deinit(alloc);
+
+        for (transparent_meshes.items) |mesh|
+            mesh.unload();
+        transparent_meshes.deinit(alloc);
     }
+
+    // TODO: two passes shouldn't be needed!
 
     // Remaining data
     var offset: usize = 0; // advanced by generateSingleMesh
     const data: []const u8 = chunk.blocks;
 
+    // SOLID MESHES
+
     // Generate meshes as long as needed
     while (offset < data.len) {
-        const mesh = try generateSingleMesh(alloc, data, &offset);
+        const mesh = try generateSingleMesh(alloc, data, &offset, false);
         errdefer mesh.unload();
 
         try meshes.append(alloc, mesh);
     }
 
-    return try meshes.toOwnedSlice(alloc);
+    offset = 0;
+
+    // TRANSPARENT MESHES
+
+    // Generate meshes as long as needed
+    while (offset < data.len) {
+        const mesh = try generateSingleMesh(alloc, data, &offset, true);
+        errdefer mesh.unload();
+
+        try meshes.append(alloc, mesh);
+    }
+
+    // TODO: good errdefer
+    return .{
+        try meshes.toOwnedSlice(alloc),
+        try transparent_meshes.toOwnedSlice(alloc),
+    };
 }
 
-fn generateSingleMesh(alloc: std.mem.Allocator, block_data: []const u8, offset: *usize) !rl.Mesh {
+fn generateSingleMesh(alloc: std.mem.Allocator, block_data: []const u8, offset: *usize, transparent: bool) !rl.Mesh {
     // Slice of the remaining data
     const begin = offset.*;
     const remaining = block_data[begin..];
@@ -133,6 +172,11 @@ fn generateSingleMesh(alloc: std.mem.Allocator, block_data: []const u8, offset: 
         if (block_id == 0)
             continue;
 
+        // Get block properties
+        const block = blocks[block_id];
+        if (block.is_transparent != transparent) // Skip transparent blocks
+            continue;
+
         // Block coordinates
         const y: i32 = @intCast(i % 128);
         const z: i32 = @intCast(i / 128 % 16);
@@ -156,9 +200,8 @@ fn generateSingleMesh(alloc: std.mem.Allocator, block_data: []const u8, offset: 
         try colors.appendNTimes(rl.mem, 0xffffffff, 8 * 3);
 
         // Add UV
-        const block_tex_id = blocks[block_id].tex_id;
-        const tx: f32 = @as(f32, @floatFromInt(block_tex_id % 16)) / 16.0;
-        const ty: f32 = @as(f32, @floatFromInt(block_tex_id / 16)) / 16.0;
+        const tx: f32 = @as(f32, @floatFromInt(block.tex_id % 16)) / 16.0;
+        const ty: f32 = @as(f32, @floatFromInt(block.tex_id / 16)) / 16.0;
 
         try addProtoCubeUV(&texcoords, tx, ty);
 

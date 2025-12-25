@@ -28,4 +28,13 @@ pub const Vec3f = struct {
     x: f64,
     y: f64,
     z: f64,
+
+    /// Gets a position from integers the way it is encoded in some packets
+    pub inline fn fromIntsDiv32(x: i32, y: i32, z: i32) Vec3f {
+        return .{
+            .x = @as(f64, @floatFromInt(x)) / 32.0,
+            .y = @as(f64, @floatFromInt(y)) / 32.0,
+            .z = @as(f64, @floatFromInt(z)) / 32.0,
+        };
+    }
 };

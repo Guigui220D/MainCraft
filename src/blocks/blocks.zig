@@ -9,18 +9,18 @@ fn texpos(x: comptime_int, y: comptime_int) comptime_int {
 /// Table of all block types
 pub const table = [256]Block{
     // 0
-    .{ .name = "air", .full_block = true },
+    .{ .name = "air", .full_block = false },
     .{ .name = "stone", .tex_id = 1 },
     .{ .name = "grass", .tex_id = 3 },
     .{ .name = "dirt", .tex_id = 2 },
     .{ .name = "cobblestone", .tex_id = texpos(0, 1) },
     .{ .name = "planks", .tex_id = 4 },
-    .{ .name = "sapling", .tex_id = 15, .full_block = true },
+    .{ .name = "sapling", .tex_id = 15, .full_block = false },
     .{ .name = "bedrock", .tex_id = texpos(1, 1) },
-    .{ .name = "water_moving", .tex_id = texpos(15, 12), .full_block = true },
-    .{ .name = "water_still", .tex_id = texpos(15, 12), .full_block = true },
-    .{ .name = "lava_moving", .tex_id = texpos(15, 14), .full_block = true },
-    .{ .name = "lava_still", .tex_id = texpos(15, 14), .full_block = true },
+    .{ .name = "water_moving", .tex_id = texpos(15, 12), .full_block = false },
+    .{ .name = "water_still", .tex_id = texpos(15, 12), .full_block = false },
+    .{ .name = "lava_moving", .tex_id = texpos(15, 14), .full_block = false },
+    .{ .name = "lava_still", .tex_id = texpos(15, 14), .full_block = false },
     .{ .name = "sand", .tex_id = texpos(2, 1) },
     .{ .name = "gravel", .tex_id = texpos(3, 1) },
     .{},
@@ -28,7 +28,7 @@ pub const table = [256]Block{
     // 16
     .{},
     .{ .name = "wood", .tex_id = texpos(4, 1) },
-    .{ .name = "leaves", .tex_id = texpos(4, 3), .full_block = true },
+    .{ .name = "leaves", .tex_id = texpos(4, 3), .full_block = false },
     .{},
     .{},
     .{},
@@ -41,7 +41,7 @@ pub const table = [256]Block{
     .{},
     .{},
     .{},
-    .{ .name = "tallgrass", .tex_id = texpos(7, 2), .full_block = true },
+    .{ .name = "tallgrass", .tex_id = texpos(7, 2), .full_block = false },
     // 32
     .{},
     .{},
@@ -95,7 +95,7 @@ pub const table = [256]Block{
     .{},
     // 80
     .{},
-    .{ .name = "cactus", .tex_id = texpos(6, 4), .full_block = true },
+    .{ .name = "cactus", .tex_id = texpos(6, 4), .full_block = false },
     .{},
     .{},
     .{},

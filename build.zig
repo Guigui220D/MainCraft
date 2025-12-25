@@ -49,6 +49,14 @@ pub fn build(b: *std.Build) void {
         .target = target,
     });
 
+    const entities_mod = b.addModule("entities", .{
+        .root_source_file = b.path("src/entities/entities.zig"),
+        .target = target,
+        .imports = &.{
+            .{ .name = "coord", .module = coord_mod },
+        },
+    });
+
     const raylib_io_mod = b.addModule("io", .{
         .root_source_file = b.path("src/frontend/raylib/io.zig"),
         .target = target,
@@ -56,6 +64,7 @@ pub fn build(b: *std.Build) void {
             .{ .name = "raylib", .module = raylib_dep.module("raylib") },
             .{ .name = "raygui", .module = raylib_dep.module("raygui") },
             .{ .name = "terrain", .module = terrain_mod },
+            .{ .name = "entities", .module = entities_mod },
             .{ .name = "coord", .module = coord_mod },
             .{ .name = "blocks", .module = blocks_mod },
         },
@@ -67,6 +76,7 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .imports = &.{
             .{ .name = "terrain", .module = terrain_mod },
+            .{ .name = "entities", .module = entities_mod },
             .{ .name = "coord", .module = coord_mod },
         },
     });
@@ -106,6 +116,7 @@ pub fn build(b: *std.Build) void {
                 .{ .name = "coord", .module = coord_mod },
                 .{ .name = "terrain", .module = terrain_mod },
                 .{ .name = "blocks", .module = blocks_mod },
+                .{ .name = "entities", .module = entities_mod },
                 // Dependencies
                 .{ .name = "network", .module = network_dep.module("network") },
                 .{ .name = "spsc_queue", .module = spsc_queue_dep.module("spsc_queue") },
@@ -169,6 +180,11 @@ pub fn build(b: *std.Build) void {
     });
     const run_blocks_tests = b.addRunArtifact(blocks_mod_tests);
 
+    const entities_mod_tests = b.addTest(.{
+        .root_module = entities_mod,
+    });
+    const run_entities_tests = b.addRunArtifact(entities_mod_tests);
+
     // Client tests
     const exe_tests = b.addTest(.{
         .root_module = exe.root_module,
@@ -185,16 +201,18 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_coord_tests.step);
     test_step.dependOn(&run_terrain_tests.step);
     test_step.dependOn(&run_blocks_tests.step);
+    test_step.dependOn(&run_entities_tests.step);
     test_step.dependOn(&run_exe_tests.step);
 
     // Individual test steps
     b.step("test_nbt", "Run NBT module tests").dependOn(&run_nbt_tests.step);
     b.step("test_net", "Run net module tests").dependOn(&run_net_tests.step);
     b.step("test_inv", "Run inventory module tests").dependOn(&run_inv_tests.step);
-    b.step("test_dw", "Run data watcher module tests").dependOn(&run_nbt_tests.step);
-    b.step("test_io", "Run game i/o module tests").dependOn(&run_nbt_tests.step);
-    b.step("test_coord", "Run coordinates module tests").dependOn(&run_nbt_tests.step);
-    b.step("test_terrain", "Run terrain module tests").dependOn(&run_nbt_tests.step);
-    b.step("test_blocks", "Run blocks module tests").dependOn(&run_nbt_tests.step);
+    b.step("test_dw", "Run data watcher module tests").dependOn(&run_dw_tests.step);
+    b.step("test_io", "Run game i/o module tests").dependOn(&run_io_tests.step);
+    b.step("test_coord", "Run coordinates module tests").dependOn(&run_coord_tests.step);
+    b.step("test_terrain", "Run terrain module tests").dependOn(&run_terrain_tests.step);
+    b.step("test_blocks", "Run blocks module tests").dependOn(&run_blocks_tests.step);
+    b.step("test_entities", "Run entiites module tests").dependOn(&run_entities_tests.step);
     b.step("test_exe", "Run NBT module tests").dependOn(&run_exe_tests.step);
 }

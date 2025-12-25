@@ -22,5 +22,3 @@ pub fn receive(_: std.mem.Allocator, stream: *std.Io.Reader) !@This() {
 }
 
 pub const tag = net.Packets.entity_teleport_34;
-
-pub const DonutPrint = .{};

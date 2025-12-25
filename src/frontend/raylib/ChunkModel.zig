@@ -9,13 +9,10 @@ const blocks = @import("blocks").table;
 
 const ChunkModel = @This();
 
-// TEMPORARY for debug
-var col_rand: std.Random.DefaultPrng = undefined;
 // Material
 var texture: rl.Texture = undefined;
 var material: rl.Material = undefined;
 
-debug_color: rl.Color,
 meshes: []rl.Mesh,
 
 /// Init the meshing system (static ressources)
@@ -28,9 +25,6 @@ pub fn initMesher() !void {
     material = try rl.loadMaterialDefault();
     errdefer material.unload();
     material.maps[0].texture = texture;
-
-    // Debug color random
-    col_rand = std.Random.DefaultPrng.init(42);
 }
 
 /// Deinit the meshing system (static ressources)
@@ -53,16 +47,11 @@ pub fn generateForChunk(alloc: std.mem.Allocator, chunk: Chunk) !ChunkModel {
         rl.uploadMesh(mesh, false);
 
     return .{
-        .debug_color = .fromInt(col_rand.random().int(u32) | 0xff),
         .meshes = meshes,
     };
 }
 
 pub fn draw(self: ChunkModel, pos: coord.Chunk) void {
-    // Draw chunk bottom/bounds (debug)
-    rl.drawCubeWires(.{ .x = @floatFromInt(pos.x * 16 + 8), .y = 128, .z = @floatFromInt(pos.z * 16 + 8) }, 16, 256, 16, .red);
-    rl.drawPlane(.{ .x = @floatFromInt(pos.x * 16 + 8), .y = 0, .z = @floatFromInt(pos.z * 16 + 8) }, .{ .x = 16, .y = 16 }, self.debug_color);
-
     // Draw chunk
     const transform: rl.Matrix = .translate(@as(f32, @floatFromInt(pos.x * 16)), 0, @as(f32, @floatFromInt(pos.z * 16)));
     for (self.meshes) |mesh|
@@ -130,6 +119,10 @@ fn generateSingleMesh(alloc: std.mem.Allocator, block_data: []const u8, offset: 
         if (block_id == 0)
             continue;
 
+        const block = blocks[block_id];
+        if (!block.full_block) // TODO: find solution for rendering transparent blocks
+            continue;
+
         // Block coordinates
         const xyz = Chunk.coordFromIndex(i);
 
@@ -151,7 +144,7 @@ fn generateSingleMesh(alloc: std.mem.Allocator, block_data: []const u8, offset: 
         try colors.appendNTimes(rl.mem, 0xffffffff, 8 * 3);
 
         // Add UV
-        const block_tex_id = blocks[block_id].tex_id;
+        const block_tex_id = block.tex_id;
         const tx: f32 = @as(f32, @floatFromInt(block_tex_id % 16)) / 16.0;
         const ty: f32 = @as(f32, @floatFromInt(block_tex_id / 16)) / 16.0;
 

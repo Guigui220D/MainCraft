@@ -2,4 +2,4 @@
 
 tex_id: u8 = 0,
 name: []const u8 = "error",
-full_block: bool = false
+full_block: bool = true

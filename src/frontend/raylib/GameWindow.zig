@@ -5,6 +5,7 @@ const rl = @import("raylib");
 
 const coord = @import("coord");
 const terrain = @import("terrain");
+const entities = @import("entities");
 
 const ChunkModel = @import("ChunkModel.zig");
 
@@ -87,7 +88,7 @@ pub fn update(self: *GameWindow) !void {
 
     if (self.f3_enabled) {
         const pos = self.camera.position;
-        self.f3_str = try std.fmt.bufPrintZ(&self.f3_buf, "x: {}\ny: {}\nz: {}\n", .{ pos.x, pos.y, pos.z });
+        self.f3_str = try std.fmt.bufPrintZ(&self.f3_buf, "x: {}\ny: {}\nz: {}\nfocused: {}", .{ pos.x, pos.y, pos.z, self.focused });
     }
 }
 
@@ -96,18 +97,43 @@ pub fn beginDraw(_: GameWindow) void {
     defer rl.clearBackground(.white);
 }
 
-pub fn drawWorld(self: GameWindow, world: terrain.World) void {
+pub fn drawWorld(self: GameWindow, world: terrain.World, entity_manager: entities.EntityManager) void {
     self.camera.begin();
 
+    // Draw world
     var chunk_it = world.chunk_list.iterator();
     while (chunk_it.next()) |entry| {
-        if (entry.value_ptr.*.model) |model| {
+        const chunk = entry.value_ptr.*;
+        const chunk_pos = entry.key_ptr.*;
+        if (self.f3_enabled) {
+            // Draw chunk bottom/bounds (debug)
+            rl.drawCubeWires(.{ .x = @floatFromInt(chunk_pos.x * 16 + 8), .y = 128, .z = @floatFromInt(chunk_pos.z * 16 + 8) }, 16, 256, 16, .red);
+            rl.drawPlane(.{ .x = @floatFromInt(chunk_pos.x * 16 + 8), .y = 0, .z = @floatFromInt(chunk_pos.z * 16 + 8) }, .{ .x = 16, .y = 16 }, .magenta);
+        }
+        if (chunk.model) |model| {
             model.draw(entry.key_ptr.*);
         }
     }
 
+    // Draw ourself
     rl.drawSphere(self.player_position, 0.4, .dark_purple);
 
+    // Draw entities
+    var it = entity_manager.entities.iterator();
+    while (it.next()) |entry| {
+        const entity = entry.value_ptr.*;
+        const pos = entity.pos;
+        const rl_pos: rl.Vector3 = .{ .x = @floatCast(pos.x), .y = @floatCast(pos.y), .z = @floatCast(pos.z) };
+        const color: rl.Color = switch (entity.ent_type) {
+            .inanimate => rl.Color.gray,
+            .item => rl.Color.brown,
+            .mob => rl.Color.dark_green,
+            .player => rl.Color.gold,
+        };
+        rl.drawSphere(rl_pos, 0.4, color);
+    }
+
+    // Draw 3d debug info
     if (self.f3_enabled) {
         const camdir = self.camera.target.subtract(self.camera.position).normalize();
         const sidedir = camdir.crossProduct(self.camera.up).normalize();

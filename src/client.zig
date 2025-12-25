@@ -4,6 +4,7 @@ const network = @import("network");
 const net = @import("net");
 const queue = @import("spsc_queue");
 
+const Entities = @import("entities").EntityManager;
 const World = @import("terrain").World;
 
 // TODO: better logging (detailed full packet list print?)
@@ -155,6 +156,9 @@ pub fn run(alloc: std.mem.Allocator) !void {
     var world: World = try .init(alloc);
     defer world.deinit();
 
+    var entities: Entities = try .init(alloc);
+    defer entities.deinit();
+
     //Temporary to satisfy server expecting us to match the expected position
     var last_plm = net.server_bound.Packet13PlayerLookMove{ .x_position = 10.5, .y_position = 66.0, .y_center_position = 66.62, .z_position = -118.5, .yaw = 0, .pitch = 0, .on_ground = false };
 
@@ -179,6 +183,55 @@ pub fn run(alloc: std.mem.Allocator) !void {
                 .player_look_move_13 => |plm| {
                     last_plm = plm;
                     window.setPlayerMarker(.{ .x = plm.x_position, .y = plm.y_position, .z = plm.z_position });
+                },
+                .named_entity_spawn_20 => |sp| {
+                    try entities.addEntity(
+                        sp.entity_id,
+                        .fromIntsDiv32(sp.x_position, sp.y_position, sp.z_position),
+                        .player,
+                    );
+                },
+                .pickup_spawn_21 => |sp| {
+                    try entities.addEntity(
+                        sp.entity_id,
+                        .fromIntsDiv32(sp.x_position, sp.y_position, sp.z_position),
+                        .item,
+                    );
+                },
+                .inanimate_spawn_23 => |sp| {
+                    try entities.addEntity(
+                        sp.entity_id,
+                        .fromIntsDiv32(sp.x_position, sp.y_position, sp.z_position),
+                        .inanimate,
+                    );
+                },
+                .mob_spawn_24 => |sp| {
+                    try entities.addEntity(
+                        sp.entity_id,
+                        .fromIntsDiv32(sp.x_position, sp.y_position, sp.z_position),
+                        .mob,
+                    );
+                },
+                .destroy_entity_29 => |stroy| {
+                    try entities.removeEntity(stroy.entity_id);
+                },
+                .rel_entity_move_31 => |move| {
+                    try entities.moveEntity(
+                        move.entity_id,
+                        .fromIntsDiv32(move.x_position, move.y_position, move.z_position),
+                    );
+                },
+                .rel_entity_move_look_33 => |move| {
+                    try entities.moveEntity(
+                        move.entity_id,
+                        .fromIntsDiv32(move.x_position, move.y_position, move.z_position),
+                    );
+                },
+                .entity_teleport_34 => |tp| {
+                    try entities.setEntityPosition(
+                        tp.entity_id,
+                        .fromIntsDiv32(tp.x_position, tp.y_position, tp.z_position),
+                    );
                 },
                 .pre_chunk_50 => |pc| {
                     try world.doPreChunk(.{ .x = pc.x_position, .z = pc.z_position }, pc.mode);
@@ -218,8 +271,6 @@ pub fn run(alloc: std.mem.Allocator) !void {
 
         if (is_connected and shouldTick()) {
             // run game prototype
-            // Server should kick us after a while for flying
-            //enqueuePacket(&out_queue, net.server_bound.Packet10OnGround{ .on_ground = true });
             last_plm.y_position -= 0.1;
             last_plm.y_center_position -= 0.1;
             if (last_plm.y_center_position < last_plm.y_position) {
@@ -241,7 +292,7 @@ pub fn run(alloc: std.mem.Allocator) !void {
         try window.update();
 
         window.beginDraw();
-        window.drawWorld(world);
+        window.drawWorld(world, entities);
         window.drawGui();
         window.endDraw();
     }

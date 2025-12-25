@@ -5,6 +5,7 @@ const rl = @import("raylib");
 
 const coord = @import("coord");
 const terrain = @import("terrain");
+const entities = @import("entities");
 
 const GameWindow = @This();
 
@@ -24,7 +25,7 @@ pub fn update(_: *GameWindow) !void {
 
 pub fn beginDraw(_: GameWindow) void {}
 
-pub fn drawWorld(_: GameWindow, _: terrain.World) void {}
+pub fn drawWorld(_: GameWindow, _: terrain.World, _: entities.EntityManager) void {}
 
 pub fn drawGui(_: GameWindow) void {}
 

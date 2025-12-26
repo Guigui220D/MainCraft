@@ -147,7 +147,7 @@ fn generateSingleMesh(alloc: std.mem.Allocator, chunk: Chunk, offset: *usize) !r
 
         // Add UV
         try texcoords.ensureUnusedCapacity(rl.mem, vertex_count * 2);
-        blocks.models.writeDefaultUv(&texcoords, face_count, block.tex_id);
+        blocks.models.writeDefaultUv(&texcoords, face_count, context.down, block.tex_id);
 
         // Count up the vertex indices
         next_id += vertex_count;

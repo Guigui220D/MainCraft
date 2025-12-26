@@ -220,6 +220,7 @@ pub fn run(alloc: std.mem.Allocator) !void {
                     try entities.removeEntity(stroy.entity_id);
                 },
                 .rel_entity_move_31 => |move| {
+                    // TODO: no need to crash when the entity is not found
                     try entities.moveEntity(
                         move.entity_id,
                         .fromIntsDiv32(move.x_position, move.y_position, move.z_position),

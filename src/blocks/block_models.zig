@@ -77,9 +77,15 @@ pub fn materializeFaces(arraylist: *std.ArrayList(VertexIdT), face_count: Vertex
 
 /// Write uv for the default basic scnario of blocks
 /// Assumes there is enough space left in the arraylist ((6 or 3) * face_count) depending of if using 2 tris or 1 quad per face
-pub fn writeDefaultUv(arraylist: *std.ArrayList(f32), face_count: usize, tex_id: u8) void {
-    const tex_coords = uv.getTerrainUV(tex_id);
-    for (0..face_count) |_| {
+/// Pass has_bottom if the last uv is a bottom side, this is obligatory to correct the issue of the bottom side having a mirrorred texture
+pub fn writeDefaultUv(arraylist: *std.ArrayList(f32), face_count: usize, has_bottom: bool, tex_id: u8) void {
+    var tex_coords = uv.getTerrainUV(tex_id, false);
+    for (0..(face_count - @intFromBool(has_bottom))) |_| {
+        arraylist.appendSliceAssumeCapacity(&tex_coords);
+    }
+
+    if (has_bottom) {
+        tex_coords = uv.getTerrainUV(tex_id, true);
         arraylist.appendSliceAssumeCapacity(&tex_coords);
     }
 }
@@ -136,20 +142,19 @@ fn writeCubeVertices(arraylist: *std.ArrayList(f32), x: i32, y: i32, z: i32, con
             x1, y2, z1,
             x1, y2, z2,
         });
-    // TODO: check texture orientation for top/bottom textures
     if (context.up)
         arraylist.appendSliceAssumeCapacity(&.{
-            x1, y2, z1,
-            x2, y2, z1,
             x2, y2, z2,
             x1, y2, z2,
+            x1, y2, z1,
+            x2, y2, z1,
         });
     if (context.down)
         arraylist.appendSliceAssumeCapacity(&.{
-            x1, y1, z1,
             x1, y1, z2,
             x2, y1, z2,
             x2, y1, z1,
+            x1, y1, z1,
         });
 }
 

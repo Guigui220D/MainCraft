@@ -4,3 +4,4 @@
 
 pub const GameWindow = @import("GameWindow.zig");
 pub const ChunkModel = @import("ChunkModel.zig");
+pub const properties = @import("properties.zig");

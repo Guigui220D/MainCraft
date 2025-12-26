@@ -47,6 +47,9 @@ pub fn build(b: *std.Build) void {
     const blocks_mod = b.addModule("blocks", .{
         .root_source_file = b.path("src/blocks/blocks.zig"),
         .target = target,
+        .imports = &.{
+            .{ .name = "coord", .module = coord_mod },
+        },
     });
 
     const entities_mod = b.addModule("entities", .{
@@ -89,6 +92,7 @@ pub fn build(b: *std.Build) void {
         .raylib => raylib_io_mod,
     };
     terrain_mod.addImport("io", io_mod);
+    blocks_mod.addImport("io", io_mod);
 
     const net_mod = b.addModule("net", .{
         .root_source_file = b.path("src/net/net.zig"),

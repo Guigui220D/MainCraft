@@ -5,7 +5,7 @@ const std = @import("std");
 const rl = @import("raylib");
 const coord = @import("coord");
 const Chunk = @import("terrain").Chunk;
-const blocks = @import("blocks").table;
+const blocks = @import("blocks");
 
 const ChunkModel = @This();
 
@@ -119,39 +119,40 @@ fn generateSingleMesh(alloc: std.mem.Allocator, block_data: []const u8, offset: 
         if (block_id == 0)
             continue;
 
-        const block = blocks[block_id];
+        const block = blocks.table[block_id];
         if (!block.full_block) // TODO: find solution for rendering transparent blocks
             continue;
 
         // Block coordinates
         const xyz = Chunk.coordFromIndex(i);
 
-        // TODO: obtain programatically the needed amount of vertices (depending on the block and circumstances)
-        const needed_vertices = 8 * 3;
+        // TODO: get block model for real
+        // TODO: read context for real
+        const context: blocks.Context = .{};
+        const face_count: c_ushort = @intCast(blocks.models.faceCount(.full, context));
+        const vertex_count: c_ushort = face_count * 4;
+        std.debug.assert(vertex_count == 3 * 8);
 
         // Stop filling buffers: we can't use more vertex indices
-        if (next_id > std.math.maxInt(c_ushort) - needed_vertices)
+        if (next_id > std.math.maxInt(c_ushort) - vertex_count)
             break;
 
         // Add vertices
-        // TODO: LESS VERTICES MEANS LESS MESHES TO UPLOAD
-        try addProtoCubeVertices(&vertices, xyz.x, xyz.y, xyz.z);
+        blocks.models.writeVertices(&vertices, .full, xyz, context);
 
         // Add triangles
-        try addProtoCubeTris(&indices, next_id);
+        try indices.ensureUnusedCapacity(rl.mem, face_count * 6); // TODO: more elegant way to get these numbers
+        blocks.models.materializeFaces(&indices, face_count, next_id, false);
 
         // Colors (later based on chunk lighting)
-        try colors.appendNTimes(rl.mem, 0xffffffff, 8 * 3);
+        try colors.appendNTimes(rl.mem, 0xffffffff, vertex_count);
 
         // Add UV
-        const block_tex_id = block.tex_id;
-        const tx: f32 = @as(f32, @floatFromInt(block_tex_id % 16)) / 16.0;
-        const ty: f32 = @as(f32, @floatFromInt(block_tex_id / 16)) / 16.0;
-
-        try addProtoCubeUV(&texcoords, tx, ty);
+        try texcoords.ensureUnusedCapacity(rl.mem, vertex_count * 2);
+        blocks.models.writeDefaultUv(&texcoords, face_count, block.tex_id);
 
         // Count up the vertex indices
-        next_id += needed_vertices;
+        next_id += vertex_count;
     }
 
     // Count used tris and verts
@@ -191,169 +192,4 @@ fn generateSingleMesh(alloc: std.mem.Allocator, block_data: []const u8, offset: 
         .vertexCount = @intCast(vert_count),
         .vertices = @ptrCast(vertices_data),
     };
-}
-
-/// Prototype helper to make cube triangles just for readability but this will disappear
-fn addProtoCubeTris(tris: *std.ArrayList(c_ushort), id: c_ushort) !void {
-    // TODO: rethink meshing
-    try tris.appendSlice(rl.mem, &.{
-        //
-        id + 0,      id + 2,      id + 3,
-        id + 0,      id + 3,      id + 1,
-        //
-        id + 1 + 8,  id + 3 + 8,  id + 7 + 8,
-        id + 1 + 8,  id + 7 + 8,  id + 5 + 8,
-        //
-        id + 0 + 8,  id + 6 + 8,  id + 2 + 8,
-        id + 0 + 8,  id + 4 + 8,  id + 6 + 8,
-        //
-        id + 0 + 16, id + 1 + 16, id + 5 + 16,
-        id + 0 + 16, id + 5 + 16, id + 4 + 16,
-        //
-        id + 4,      id + 7,      id + 6,
-        id + 4,      id + 5,      id + 7,
-        //
-        id + 2,      id + 7,      id + 3,
-        id + 2,      id + 6,      id + 7,
-    });
-}
-
-/// Prototype helper to map cube triangles UVs just for readability but this will disappear
-fn addProtoCubeUV(uv: *std.ArrayList(f32), tx: f32, ty: f32) !void {
-    // TODO: rethink meshing
-    try uv.appendSlice(rl.mem, &.{
-        0 + tx,          0 + ty,
-        0 + tx,          1.0 / 16.0 + ty,
-        1.0 / 16.0 + tx, 0 + ty,
-        1.0 / 16.0 + tx, 1.0 / 16.0 + ty,
-
-        1.0 / 16.0 + tx, 0 + ty,
-        1.0 / 16.0 + tx, 1.0 / 16.0 + ty,
-        0 + tx,          0 + ty,
-        0 + tx,          1.0 / 16.0 + ty,
-
-        0 + tx,          0 + ty,
-        1.0 / 16.0 + tx, 0 + ty,
-        0 + tx,          1.0 / 16.0 + ty,
-        1.0 / 16.0 + tx, 1.0 / 16.0 + ty,
-
-        1.0 / 16.0 + tx, 0 + ty,
-        0 + tx,          0 + ty,
-        1.0 / 16.0 + tx, 1.0 / 16.0 + ty,
-        0 + tx,          1.0 / 16.0 + ty,
-
-        0 + tx,          0 + ty,
-        0 + tx,          1.0 / 16.0 + ty,
-        1.0 / 16.0 + tx, 0 + ty,
-        1.0 / 16.0 + tx, 1.0 / 16.0 + ty,
-
-        1.0 / 16.0 + tx, 0 + ty,
-        1.0 / 16.0 + tx, 1.0 / 16.0 + ty,
-        0 + tx,          0 + ty,
-        0 + tx,          1.0 / 16.0 + ty,
-    });
-}
-
-fn addProtoCubeVertices(vertices: *std.ArrayList(f32), x: i32, y: i32, z: i32) !void {
-    // TODO: cull faces
-    // TODO: rethink meshing: model per block id (reuse vertices where possible)
-    vertices.appendSliceAssumeCapacity(&.{
-        // Each point is shared by 3 faces, so duplicate the points
-        // 0
-        @floatFromInt(x),
-        @floatFromInt(y),
-        @floatFromInt(z),
-        // 1
-        @floatFromInt(x),
-        @floatFromInt(y),
-        @floatFromInt(z + 1),
-        // 2
-        @floatFromInt(x + 1),
-        @floatFromInt(y),
-        @floatFromInt(z),
-        // 3
-        @floatFromInt(x + 1),
-        @floatFromInt(y),
-        @floatFromInt(z + 1),
-        // 4
-        @floatFromInt(x),
-        @floatFromInt(y + 1),
-        @floatFromInt(z),
-        // 5
-        @floatFromInt(x),
-        @floatFromInt(y + 1),
-        @floatFromInt(z + 1),
-        // 6
-        @floatFromInt(x + 1),
-        @floatFromInt(y + 1),
-        @floatFromInt(z),
-        // 7
-        @floatFromInt(x + 1),
-        @floatFromInt(y + 1),
-        @floatFromInt(z + 1),
-        // 0 + 8
-        @floatFromInt(x),
-        @floatFromInt(y),
-        @floatFromInt(z),
-        // 1 + 8
-        @floatFromInt(x),
-        @floatFromInt(y),
-        @floatFromInt(z + 1),
-        // 2 + 8
-        @floatFromInt(x + 1),
-        @floatFromInt(y),
-        @floatFromInt(z),
-        // 3 + 8
-        @floatFromInt(x + 1),
-        @floatFromInt(y),
-        @floatFromInt(z + 1),
-        // 4 + 8
-        @floatFromInt(x),
-        @floatFromInt(y + 1),
-        @floatFromInt(z),
-        // 5 + 8
-        @floatFromInt(x),
-        @floatFromInt(y + 1),
-        @floatFromInt(z + 1),
-        // 6
-        @floatFromInt(x + 1),
-        @floatFromInt(y + 1),
-        @floatFromInt(z),
-        // 7 + 8
-        @floatFromInt(x + 1),
-        @floatFromInt(y + 1),
-        @floatFromInt(z + 1),
-        // 0 + 16
-        @floatFromInt(x),
-        @floatFromInt(y),
-        @floatFromInt(z),
-        // 1 + 16
-        @floatFromInt(x),
-        @floatFromInt(y),
-        @floatFromInt(z + 1),
-        // 2 + 16
-        @floatFromInt(x + 1),
-        @floatFromInt(y),
-        @floatFromInt(z),
-        // 3 + 16
-        @floatFromInt(x + 1),
-        @floatFromInt(y),
-        @floatFromInt(z + 1),
-        // 4 + 16
-        @floatFromInt(x),
-        @floatFromInt(y + 1),
-        @floatFromInt(z),
-        // 5 + 16
-        @floatFromInt(x),
-        @floatFromInt(y + 1),
-        @floatFromInt(z + 1),
-        // 6 + 16
-        @floatFromInt(x + 1),
-        @floatFromInt(y + 1),
-        @floatFromInt(z),
-        // 7 + 16
-        @floatFromInt(x + 1),
-        @floatFromInt(y + 1),
-        @floatFromInt(z + 1),
-    });
 }

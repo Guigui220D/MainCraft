@@ -2,6 +2,10 @@
 
 const Block = @import("Block.zig");
 
+pub const models = @import("block_models.zig");
+pub const Context = @import("context.zig").Context;
+pub const uv = @import("uv.zig");
+
 fn texpos(x: comptime_int, y: comptime_int) comptime_int {
     return y * 16 + x;
 }

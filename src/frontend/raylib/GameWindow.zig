@@ -25,6 +25,7 @@ focused: bool = true,
 f3_enabled: bool = true,
 f3_buf: [512]u8 = undefined,
 f3_str: [:0]const u8 = undefined,
+wiremesh: bool = false,
 
 pub fn init(alloc: std.mem.Allocator) !GameWindow {
     rl.setConfigFlags(.{ .window_resizable = true, .window_highdpi = true });
@@ -83,6 +84,10 @@ pub fn update(self: *GameWindow) !void {
         self.f3_enabled = !self.f3_enabled;
     }
 
+    if (rl.isKeyPressed(.f4)) {
+        self.wiremesh = !self.wiremesh;
+    }
+
     if (self.focused)
         self.camera.update(.free);
 
@@ -101,6 +106,9 @@ pub fn drawWorld(self: GameWindow, world: terrain.World, entity_manager: entitie
     self.camera.begin();
 
     // Draw world
+    if (self.wiremesh)
+        rl.gl.rlEnableWireMode();
+
     var chunk_it = world.chunk_list.iterator();
     while (chunk_it.next()) |entry| {
         const chunk = entry.value_ptr.*;
@@ -114,6 +122,9 @@ pub fn drawWorld(self: GameWindow, world: terrain.World, entity_manager: entitie
             model.draw(entry.key_ptr.*);
         }
     }
+
+    if (self.wiremesh)
+        rl.gl.rlDisableWireMode();
 
     // Draw ourself
     rl.drawCube(self.player_position, 0.6, 1.8, 0.6, .dark_purple);

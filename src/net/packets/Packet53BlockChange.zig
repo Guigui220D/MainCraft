@@ -21,5 +21,3 @@ pub fn receive(_: std.mem.Allocator, stream: *std.Io.Reader) !@This() {
 }
 
 pub const tag = net.Packets.block_change_53;
-
-pub const DonutPrint = .{};

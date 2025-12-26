@@ -2,6 +2,7 @@
 //! i.e. windowing, graphics, audio, and input
 //! This frontend uses Raylib
 
+pub const main = @import("main.zig").main;
 pub const GameWindow = @import("GameWindow.zig");
 pub const ChunkModel = @import("ChunkModel.zig");
 pub const properties = @import("properties.zig");

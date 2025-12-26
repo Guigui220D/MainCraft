@@ -1,5 +1,6 @@
 const std = @import("std");
-const client = @import("client.zig");
+const io = @import("io");
+const network = @import("network");
 
 pub const tracy_impl = @import("tracy_impl");
 
@@ -22,5 +23,8 @@ pub fn main() !void {
     defer _ = gpa.deinit();
     const alloc = gpa.allocator();
 
-    try client.run(alloc);
+    try network.init();
+    defer network.deinit();
+
+    try io.main(alloc);
 }

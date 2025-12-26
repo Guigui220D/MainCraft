@@ -21,5 +21,3 @@ pub fn deinit(self: @This(), alloc: std.mem.Allocator) void {
 }
 
 pub const tag = net.Packets.chat_3;
-
-pub const DonutPrint = .{};

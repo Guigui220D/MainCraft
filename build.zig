@@ -121,6 +121,28 @@ pub fn build(b: *std.Build) void {
         },
     });
 
+    const engine_mod = b.addModule("engine", .{
+        .root_source_file = b.path("src/engine/engine.zig"),
+        .target = target,
+        .imports = &.{
+            // Internal
+            .{ .name = "net", .module = net_mod },
+            .{ .name = "data_watcher", .module = dw_mod },
+            .{ .name = "inventory", .module = inv_mod },
+            .{ .name = "io", .module = io_mod },
+            .{ .name = "coord", .module = coord_mod },
+            .{ .name = "terrain", .module = terrain_mod },
+            .{ .name = "blocks", .module = blocks_mod },
+            .{ .name = "entities", .module = entities_mod },
+            // Dependencies
+            .{ .name = "network", .module = network_dep.module("network") },
+            .{ .name = "spsc_queue", .module = spsc_queue_dep.module("spsc_queue") },
+            .{ .name = "tracy", .module = tracy_dep.module("tracy") },
+        },
+    });
+
+    io_mod.addImport("engine", engine_mod);
+
     // Client executable
     const exe = b.addExecutable(.{
         .name = "maincraft",
@@ -130,18 +152,9 @@ pub fn build(b: *std.Build) void {
             .optimize = optimize,
             .imports = &.{
                 // Internal
-                .{ .name = "nbt", .module = nbt_mod },
-                .{ .name = "net", .module = net_mod },
-                .{ .name = "data_watcher", .module = dw_mod },
-                .{ .name = "inventory", .module = inv_mod },
                 .{ .name = "io", .module = io_mod },
-                .{ .name = "coord", .module = coord_mod },
-                .{ .name = "terrain", .module = terrain_mod },
-                .{ .name = "blocks", .module = blocks_mod },
-                .{ .name = "entities", .module = entities_mod },
                 // Dependencies
                 .{ .name = "network", .module = network_dep.module("network") },
-                .{ .name = "spsc_queue", .module = spsc_queue_dep.module("spsc_queue") },
                 .{ .name = "tracy", .module = tracy_dep.module("tracy") },
             },
         }),
@@ -210,6 +223,11 @@ pub fn build(b: *std.Build) void {
     });
     const run_entities_tests = b.addRunArtifact(entities_mod_tests);
 
+    const engine_mod_tests = b.addTest(.{
+        .root_module = engine_mod,
+    });
+    const run_engine_tests = b.addRunArtifact(engine_mod_tests);
+
     // Client tests
     const exe_tests = b.addTest(.{
         .root_module = exe.root_module,
@@ -227,6 +245,7 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_terrain_tests.step);
     test_step.dependOn(&run_blocks_tests.step);
     test_step.dependOn(&run_entities_tests.step);
+    test_step.dependOn(&run_engine_tests.step);
     test_step.dependOn(&run_exe_tests.step);
 
     // Individual test steps
@@ -238,6 +257,7 @@ pub fn build(b: *std.Build) void {
     b.step("test_coord", "Run coordinates module tests").dependOn(&run_coord_tests.step);
     b.step("test_terrain", "Run terrain module tests").dependOn(&run_terrain_tests.step);
     b.step("test_blocks", "Run blocks module tests").dependOn(&run_blocks_tests.step);
-    b.step("test_entities", "Run entiites module tests").dependOn(&run_entities_tests.step);
+    b.step("test_entities", "Run entities module tests").dependOn(&run_entities_tests.step);
+    b.step("test_engine", "Run engine tests").dependOn(&run_engine_tests.step);
     b.step("test_exe", "Run NBT module tests").dependOn(&run_exe_tests.step);
 }

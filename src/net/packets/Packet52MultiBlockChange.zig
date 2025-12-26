@@ -39,5 +39,3 @@ pub fn deinit(self: @This(), alloc: std.mem.Allocator) void {
 }
 
 pub const tag = net.Packets.multi_block_change_52;
-
-pub const DonutPrint = .{};

@@ -35,6 +35,18 @@ fn PacketDebug(size: comptime_int) type {
 
 /// Union of any inbound packet
 pub const InboundPacket = union(Packets) {
+    // Deinit the packet if theres a deinit function on the payload
+    pub fn deinit(self: InboundPacket, alloc: std.mem.Allocator) void {
+        // TODO: does this generate lots of branches?
+        switch (self) {
+            inline else => |p| {
+                if (@hasDecl(@TypeOf(p), "deinit")) {
+                    p.deinit(alloc);
+                }
+            },
+        }
+    }
+
     keep_alive_0: @import("packets/Packet0KeepAlive.zig"),
     login_1: @import("packets/Packet1Login.zig"),
     handshake_2: @import("packets/Packet2Handshake.zig"),

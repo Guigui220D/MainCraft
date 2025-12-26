@@ -8,7 +8,7 @@ Here, input/output (I/O) refers to the way the player interacts with the game, n
 
 The minecraft client is made as to not directly depend on any graphics/etc library but abstract all of that through the I/O API.
 
-To create a new drop-in I/O replacement, refer to the [dummy io module](../src/frontend/dummy/) which implements a non-fonctionnal but compiling frontend with the strictly necessary functions that the engine calls. Fill in the functions you want.
+To create a new drop-in I/O replacement, refer to the [dummy io module](../src/frontend/dummy/) which implements a non-fonctionnal but compiling frontend with the strictly necessary functions that the engine calls. Fill in the functions you want. The main function should be rewritten, to allow making menus, etc, calling draw functions.
 
 The selected I/O frontend exposes both functions and structures for storing ressources and state of rendered objects that are then stored in the engine's objects.
 

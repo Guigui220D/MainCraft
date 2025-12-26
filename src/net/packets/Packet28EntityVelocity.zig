@@ -22,4 +22,4 @@ pub fn receive(_: std.mem.Allocator, stream: *std.Io.Reader) !@This() {
 
 pub const tag = net.Packets.entity_velocity_28;
 
-pub const DonutPrint = .{};
+pub const do_not_print = .{};

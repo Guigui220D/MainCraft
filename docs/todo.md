@@ -15,6 +15,7 @@
 - [ ] Chunk metadata
 - [ ] Lighting engine
 - [ ] Weather, time
+- [ ] Clearly define I/O role and API
 
 ## Raylib I/O
 

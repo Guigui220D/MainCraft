@@ -26,7 +26,7 @@ pub inline fn vertexCount(model: BlockModel, context: Context) usize {
 /// Returns the number of faces the block will use in that specific context
 pub inline fn faceCount(model: BlockModel, context: Context) usize {
     return switch (model) {
-        .full => cubeFaceCount(context),
+        .full => context.faceCount(),
         .slab => slabFaceCount(context),
         .plant => plant_face_count,
     };
@@ -73,38 +73,6 @@ pub fn materializeFaces(arraylist: *std.ArrayList(VertexIdT), face_count: Vertex
             id_off += 4;
         }
     }
-}
-
-/// Write uv for the default basic scnario of blocks
-/// Assumes there is enough space left in the arraylist ((6 or 3) * face_count) depending of if using 2 tris or 1 quad per face
-/// Pass has_bottom if the last uv is a bottom side, this is obligatory to correct the issue of the bottom side having a mirrorred texture
-pub fn writeDefaultUv(arraylist: *std.ArrayList(f32), face_count: usize, has_bottom: bool, tex_id: u8) void {
-    var tex_coords = uv.getTerrainUV(tex_id, false);
-    for (0..(face_count - @intFromBool(has_bottom))) |_| {
-        arraylist.appendSliceAssumeCapacity(&tex_coords);
-    }
-
-    if (has_bottom) {
-        tex_coords = uv.getTerrainUV(tex_id, true);
-        arraylist.appendSliceAssumeCapacity(&tex_coords);
-    }
-}
-
-fn cubeFaceCount(context: Context) usize {
-    var ret: usize = 0;
-    if (context.north)
-        ret += 1;
-    if (context.east)
-        ret += 1;
-    if (context.south)
-        ret += 1;
-    if (context.west)
-        ret += 1;
-    if (context.up)
-        ret += 1;
-    if (context.down)
-        ret += 1;
-    return ret;
 }
 
 fn writeCubeVertices(arraylist: *std.ArrayList(f32), x: i32, y: i32, z: i32, context: Context) void {

@@ -14,4 +14,21 @@ pub const Context = packed struct {
     up: bool = true,
     /// Bottom (-Y) faces should be rendered
     down: bool = true,
+
+    pub fn faceCount(self: Context) u8 {
+        var ret: u8 = 0;
+        if (self.north)
+            ret += 1;
+        if (self.east)
+            ret += 1;
+        if (self.south)
+            ret += 1;
+        if (self.west)
+            ret += 1;
+        if (self.up)
+            ret += 1;
+        if (self.down)
+            ret += 1;
+        return ret;
+    }
 };

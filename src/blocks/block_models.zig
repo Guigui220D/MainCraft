@@ -43,8 +43,7 @@ pub inline fn writeVertices(arraylist: *std.ArrayList(f32), model: BlockModel, c
         .full => writeCubeVertices(arraylist, x, y, z, context),
         //.slab => writeSlabVertices(writer, x, y, z, context),
         .slab => unreachable,
-        //.plant => writePlantVertices(writer, x, y, z),
-        .plant => unreachable,
+        .plant => writePlantVertices(arraylist, x, y, z),
     }
 }
 
@@ -126,6 +125,38 @@ fn writeCubeVertices(arraylist: *std.ArrayList(f32), x: i32, y: i32, z: i32, con
         });
 }
 
+fn writePlantVertices(arraylist: *std.ArrayList(f32), x: i32, y: i32, z: i32) void {
+    const x1: f32 = @as(f32, @floatFromInt(x)) + 1.0 - 0.853;
+    const x2: f32 = @as(f32, @floatFromInt(x)) + 0.853;
+    const y1: f32 = @floatFromInt(y + 0);
+    const y2: f32 = @floatFromInt(y + 1);
+    const z1: f32 = @as(f32, @floatFromInt(z)) + 1.0 - 0.853;
+    const z2: f32 = @as(f32, @floatFromInt(z)) + 0.853;
+    // Plant are two perpendicular two-faced squared
+    arraylist.appendSliceAssumeCapacity(&.{
+        // Plane 1 face 1
+        x1, y1, z1,
+        x2, y1, z2,
+        x2, y2, z2,
+        x1, y2, z1,
+        // Plane 1 face 2
+        x2, y1, z2,
+        x1, y1, z1,
+        x1, y2, z1,
+        x2, y2, z2,
+        // Plane 2 face 1
+        x1, y1, z2,
+        x2, y1, z1,
+        x2, y2, z1,
+        x1, y2, z2,
+        // Plane 2 face 2
+        x2, y1, z1,
+        x1, y1, z2,
+        x1, y2, z2,
+        x2, y2, z1,
+    });
+}
+
 fn slabFaceCount(context: Context) usize {
     // Top face always renders
     var ret: usize = 1;
@@ -142,4 +173,4 @@ fn slabFaceCount(context: Context) usize {
     return ret;
 }
 
-const plant_face_count = 2;
+const plant_face_count = 4;

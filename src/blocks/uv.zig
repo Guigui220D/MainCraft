@@ -36,6 +36,7 @@ pub const UvType = enum {
     basic, // Blocks with the same texture on each side
     barrel, // Blocks with a top, side, and bottom
     advanced, // Blocks with specific textures for each side
+    plant, // Plants made of two planes
 };
 
 /// Write the right UV depending on the context and block id
@@ -46,6 +47,7 @@ pub fn writeUV(arraylist: *std.ArrayList(f32), context: Context, block_id: u8) v
         .basic => writeBasicUV(arraylist, context, block.tex_id),
         .barrel => writeBarrelUV(arraylist, context, block.tex_id, block.top_tex_id, block.bottom_tex_id),
         .advanced => writeAdvancedUV(arraylist, context, block.tex_id, block.east_tex_id, block.south_tex_id, block.west_tex_id, block.top_tex_id, block.bottom_tex_id),
+        .plant => writePlantUV(arraylist, block.tex_id),
     }
 }
 
@@ -114,4 +116,13 @@ fn writeAdvancedUV(arraylist: *std.ArrayList(f32), context: Context, north_tex_i
         const tex_coords = getTerrainUV(bottom_tex_id, true);
         arraylist.appendSliceAssumeCapacity(&tex_coords);
     }
+}
+
+/// Write uv for the 2-planes plants
+fn writePlantUV(arraylist: *std.ArrayList(f32), tex_id: u8) void {
+    const tex_coords = getTerrainUV(tex_id, false);
+    arraylist.appendSliceAssumeCapacity(&tex_coords);
+    arraylist.appendSliceAssumeCapacity(&tex_coords);
+    arraylist.appendSliceAssumeCapacity(&tex_coords);
+    arraylist.appendSliceAssumeCapacity(&tex_coords);
 }

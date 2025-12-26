@@ -119,8 +119,7 @@ fn generateSingleMesh(alloc: std.mem.Allocator, chunk: Chunk, offset: *usize) !r
             continue;
 
         const block = blocks.table[block_id];
-        if (!block.full_block) // TODO: find solution for rendering transparent blocks
-            continue;
+        // TODO: find solution for rendering transparent blocks
 
         // Block coordinates
         const xyz = Chunk.coordFromIndex(i);
@@ -128,7 +127,7 @@ fn generateSingleMesh(alloc: std.mem.Allocator, chunk: Chunk, offset: *usize) !r
         // TODO: get block model for real
         // TODO: read context for real
         const context: blocks.Context = chunk.getContext(xyz);
-        const face_count: c_ushort = @intCast(blocks.models.faceCount(.full, context));
+        const face_count: c_ushort = @intCast(blocks.models.faceCount(block.block_model, context));
         const vertex_count: c_ushort = face_count * 4;
 
         // Stop filling buffers: we can't use more vertex indices
@@ -136,7 +135,7 @@ fn generateSingleMesh(alloc: std.mem.Allocator, chunk: Chunk, offset: *usize) !r
             break;
 
         // Add vertices
-        blocks.models.writeVertices(&vertices, .full, xyz, context);
+        blocks.models.writeVertices(&vertices, block.block_model, xyz, context);
 
         // Add triangles
         try indices.ensureUnusedCapacity(rl.mem, face_count * 6); // TODO: more elegant way to get these numbers
@@ -146,8 +145,15 @@ fn generateSingleMesh(alloc: std.mem.Allocator, chunk: Chunk, offset: *usize) !r
         try colors.appendNTimes(rl.mem, 0xffffffff, vertex_count);
 
         // Add UV
+        const before = texcoords.items.len;
         try texcoords.ensureUnusedCapacity(rl.mem, vertex_count * 2);
         blocks.uv.writeUV(&texcoords, context, block_id);
+        const after = texcoords.items.len;
+        if (after - before != vertex_count * 2) {
+            std.debug.print("Error with block {s}\n", .{block.name});
+            std.debug.print("Expected {} uv components, got {}\n", .{ vertex_count * 2, after - before });
+            unreachable;
+        }
 
         // Count up the vertex indices
         next_id += vertex_count;

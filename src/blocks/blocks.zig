@@ -10,6 +10,7 @@ fn texpos(x: comptime_int, y: comptime_int) comptime_int {
     return y * 16 + x;
 }
 
+// TODO: use the right block names instead of variable names
 /// Table of all block types
 pub const table = [256]Block{
     // 0
@@ -45,17 +46,17 @@ pub const table = [256]Block{
     .{},
     .{},
     .{},
-    .{ .name = "tallgrass", .tex_id = texpos(7, 2), .full_block = false },
+    .{ .name = "tallgrass", .tex_id = texpos(7, 2), .full_block = false, .block_model = .plant, .uv_type = .plant },
     // 32
     .{},
     .{},
     .{},
     .{},
     .{},
-    .{},
-    .{},
-    .{},
-    .{},
+    .{ .name = "flower", .tex_id = 13, .full_block = false, .block_model = .plant, .uv_type = .plant },
+    .{ .name = "rose", .tex_id = 12, .full_block = false, .block_model = .plant, .uv_type = .plant },
+    .{ .name = "mushroom", .tex_id = texpos(1, 13), .full_block = false, .block_model = .plant, .uv_type = .plant },
+    .{ .name = "mushroom", .tex_id = texpos(1, 12), .full_block = false, .block_model = .plant, .uv_type = .plant },
     .{},
     .{},
     .{},

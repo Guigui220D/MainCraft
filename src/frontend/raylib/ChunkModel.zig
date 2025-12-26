@@ -11,10 +11,14 @@ const tracy = @import("tracy");
 const ChunkModel = @This();
 
 // Material
+// TODO: ressource manager
 var texture: rl.Texture = undefined;
 var material: rl.Material = undefined;
+var shader_transparency: rl.Shader = undefined;
+var material_transparency: rl.Material = undefined;
 
 meshes: []rl.Mesh,
+transparent_meshes: []rl.Mesh,
 
 /// Init the meshing system (static ressources)
 pub fn initMesher() !void {
@@ -22,33 +26,52 @@ pub fn initMesher() !void {
     texture = try rl.loadTexture("res/jar/minecraft/terrain.png");
     errdefer texture.unload();
 
-    // Init material
+    // Load shaders
+
+    // Init materials
     material = try rl.loadMaterialDefault();
     errdefer material.unload();
     material.maps[0].texture = texture;
+
+    shader_transparency = try rl.loadShader(null, "res/shaders/chunk_transparent.fs");
+    errdefer shader_transparency.unload();
+
+    material_transparency = try rl.loadMaterialDefault();
+    errdefer material_transparency.unload();
+    material_transparency.maps[0].texture = texture;
+    material_transparency.shader = shader_transparency;
 }
 
 /// Deinit the meshing system (static ressources)
 pub fn deinitMesher() void {
     material.unload();
+    material_transparency.unload();
     texture.unload();
 }
 
 /// Prepare the ChunkModel for a chunk (part of the API)
 pub fn generateForChunk(alloc: std.mem.Allocator, chunk: Chunk) !ChunkModel {
-    const meshes = try generateMeshesForChunk(alloc, chunk);
+    const meshes, const transparent_meshes = try generateMeshesForChunk(alloc, chunk);
     errdefer {
         for (meshes) |mesh|
             mesh.unload();
         alloc.free(meshes);
+
+        for (transparent_meshes) |mesh|
+            mesh.unload();
+        alloc.free(transparent_meshes);
     }
 
     // Upload generated meshes
     for (meshes) |*mesh|
         rl.uploadMesh(mesh, false);
 
+    for (transparent_meshes) |*mesh|
+        rl.uploadMesh(mesh, false);
+
     return .{
         .meshes = meshes,
+        .transparent_meshes = transparent_meshes,
     };
 }
 
@@ -59,38 +82,72 @@ pub fn draw(self: ChunkModel, pos: coord.Chunk) void {
         rl.drawMesh(mesh, material, transform);
 }
 
+pub fn drawTransparentLayer(self: ChunkModel, pos: coord.Chunk) void {
+    // Draw chunk
+    const transform: rl.Matrix = .translate(@as(f32, @floatFromInt(pos.x * 16)), 0, @as(f32, @floatFromInt(pos.z * 16)));
+    for (self.transparent_meshes) |mesh|
+        rl.drawMesh(mesh, material_transparency, transform);
+}
+
 pub fn deinit(self: ChunkModel, alloc: std.mem.Allocator) void {
     for (self.meshes) |mesh|
         mesh.unload();
+    for (self.transparent_meshes) |mesh|
+        mesh.unload();
     alloc.free(self.meshes);
+    alloc.free(self.transparent_meshes);
 }
 
 /// Renders a chunk into a mesh
-fn generateMeshesForChunk(alloc: std.mem.Allocator, chunk: Chunk) ![]rl.Mesh {
+fn generateMeshesForChunk(alloc: std.mem.Allocator, chunk: Chunk) !struct { []rl.Mesh, []rl.Mesh } {
     // Meshes arraylist
     // TODO: find out worst case to pre-alloc
     var meshes: std.ArrayList(rl.Mesh) = .{};
+    var transparent_meshes: std.ArrayList(rl.Mesh) = .{};
     errdefer {
         for (meshes.items) |mesh|
             mesh.unload();
         meshes.deinit(alloc);
+
+        for (transparent_meshes.items) |mesh|
+            mesh.unload();
+        transparent_meshes.deinit(alloc);
     }
 
     // Remaining data
     var offset: usize = 0; // advanced by generateSingleMesh
 
+    // SOLID MESHES
+
     // Generate meshes as long as needed
     while (offset < Chunk.block_data_len) {
-        const mesh = try generateSingleMesh(alloc, chunk, &offset);
+        const mesh = try generateSingleMesh(alloc, chunk, &offset, false) orelse continue;
         errdefer mesh.unload();
 
         try meshes.append(alloc, mesh);
     }
 
-    return try meshes.toOwnedSlice(alloc);
+    offset = 0;
+
+    // TRANSPARENT MESHES
+
+    // Generate meshes as long as needed
+    while (offset < Chunk.block_data_len) {
+        const mesh = try generateSingleMesh(alloc, chunk, &offset, true) orelse continue;
+        errdefer mesh.unload();
+
+        try transparent_meshes.append(alloc, mesh);
+    }
+
+    // TODO: good errdefer
+    return .{
+        try meshes.toOwnedSlice(alloc),
+        try transparent_meshes.toOwnedSlice(alloc),
+    };
 }
 
-fn generateSingleMesh(alloc: std.mem.Allocator, chunk: Chunk, offset: *usize) !rl.Mesh {
+// TODO: two passes aren't necessary, can collect both meshes in one go
+fn generateSingleMesh(alloc: std.mem.Allocator, chunk: Chunk, offset: *usize, transparent: bool) !?rl.Mesh {
     const zone = tracy.Zone.begin(.{
         .name = "Chunk meshing (rl)",
         .src = @src(),
@@ -103,18 +160,17 @@ fn generateSingleMesh(alloc: std.mem.Allocator, chunk: Chunk, offset: *usize) !r
     const remaining = chunk.blocks_data[begin..];
 
     // Dynamic arraylists used to alloc necessary memory for model data
-    // TODO: put the transparent blocks in a distinct array
     var vertices: std.ArrayList(f32) = try .initCapacity(rl.mem, (std.math.maxInt(c_ushort) * 3 + 1));
-    errdefer vertices.deinit(rl.mem);
+    defer vertices.deinit(rl.mem);
     // TODO: prealloc in a pessimistic way to avoid reallocations
     var indices: std.ArrayList(c_ushort) = .{};
-    errdefer indices.deinit(rl.mem);
+    defer indices.deinit(rl.mem);
 
     var colors: std.ArrayList(u32) = .{};
-    errdefer colors.deinit(rl.mem);
+    defer colors.deinit(rl.mem);
 
     var texcoords: std.ArrayList(f32) = .{};
-    errdefer texcoords.deinit(rl.mem);
+    defer texcoords.deinit(rl.mem);
 
     // vertex indices used for the next model added
     var next_id: c_ushort = 0;
@@ -134,7 +190,8 @@ fn generateSingleMesh(alloc: std.mem.Allocator, chunk: Chunk, offset: *usize) !r
         defer block_zone.end();
 
         const block = blocks.table[block_id];
-        // TODO: find solution for rendering transparent blocks
+        if (block.full_block == transparent)
+            continue;
 
         // Block coordinates
         const xyz = Chunk.coordFromIndex(i);
@@ -178,6 +235,10 @@ fn generateSingleMesh(alloc: std.mem.Allocator, chunk: Chunk, offset: *usize) !r
     // Count used tris and verts
     const tri_count = indices.items.len / 3;
     const vert_count = vertices.items.len / 3;
+
+    // We don't want to generate an empty mesh
+    if (vert_count == 0)
+        return null;
 
     // Own the slices
     const colors_data = try colors.toOwnedSlice(rl.mem);

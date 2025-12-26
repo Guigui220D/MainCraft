@@ -15,6 +15,7 @@ const screenWidth = 800;
 const screenHeight = 450;
 
 // Debug compass
+// TODO: ressource manager
 var compass: rl.Model = undefined;
 
 camera: rl.Camera,
@@ -118,8 +119,17 @@ pub fn drawWorld(self: GameWindow, world: terrain.World, entity_manager: entitie
             rl.drawCubeWires(.{ .x = @floatFromInt(chunk_pos.x * 16 + 8), .y = 128, .z = @floatFromInt(chunk_pos.z * 16 + 8) }, 16, 256, 16, .red);
             rl.drawPlane(.{ .x = @floatFromInt(chunk_pos.x * 16 + 8), .y = 0, .z = @floatFromInt(chunk_pos.z * 16 + 8) }, .{ .x = 16, .y = 16 }, .magenta);
         }
+        // Draw the solid part of the chunk
         if (chunk.model) |model| {
             model.draw(entry.key_ptr.*);
+        }
+    }
+
+    // Draw the transparent part of chunks
+    chunk_it = world.chunk_list.iterator();
+    while (chunk_it.next()) |entry| {
+        if (entry.value_ptr.*.model) |model| {
+            model.drawTransparentLayer(entry.key_ptr.*);
         }
     }
 

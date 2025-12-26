@@ -19,7 +19,7 @@ pub fn build(b: *std.Build) void {
         Frontend,
         "frontend",
         "Select the frontend",
-    ) orelse .dummy;
+    ) orelse .raylib;
 
     // Dependencies
     const network_dep = b.dependency("network", .{});

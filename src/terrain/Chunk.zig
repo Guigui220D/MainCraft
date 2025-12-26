@@ -4,6 +4,7 @@ const std = @import("std");
 const coord = @import("coord");
 const io = @import("io");
 const blocks = @import("blocks");
+const tracy = @import("tracy");
 
 const Chunk = @This();
 
@@ -73,6 +74,14 @@ pub fn destroyChunk(self: *Chunk, alloc: std.mem.Allocator) void {
 pub fn updateModel(self: *Chunk, alloc: std.mem.Allocator) !void {
     if (self.model) |old_model|
         old_model.deinit(alloc);
+
+    const zone = tracy.Zone.begin(.{
+        .name = "Chunk meshing",
+        .src = @src(),
+        .color = .yellow,
+    });
+    defer zone.end();
+
     self.model = try io.ChunkModel.generateForChunk(alloc, self.*);
 }
 
@@ -81,6 +90,13 @@ pub fn deinit(self: Chunk, alloc: std.mem.Allocator) void {
 }
 
 pub fn getBlockId(self: Chunk, pos: coord.Block) u8 {
+    const zone = tracy.Zone.begin(.{
+        .name = "Get block",
+        .src = @src(),
+        .color = .pink1,
+    });
+    defer zone.end();
+
     if (!pos.isWithinChunk())
         return 0;
     const index = indexFromCoord(pos);
@@ -88,6 +104,13 @@ pub fn getBlockId(self: Chunk, pos: coord.Block) u8 {
 }
 
 pub fn getContext(self: Chunk, pos: coord.Block) blocks.Context {
+    const zone = tracy.Zone.begin(.{
+        .name = "Get context",
+        .src = @src(),
+        .color = .pink,
+    });
+    defer zone.end();
+
     return .{
         .north = !blocks.table[getBlockId(self, pos.north())].full_block,
         .east = !blocks.table[getBlockId(self, pos.east())].full_block,

@@ -44,6 +44,10 @@
             .url = "https://github.com/ikskuh/zig-network/archive/8913ea90dfa0b065bf98b527abacb0c94b39dbdd.tar.gz",
             .hash = "network-0.1.0-Pm-AgqgxAQA90YSyPBtiEeSmJZblJW-dWmoTO6YiYdrP",
         },
+        .tracy = .{
+            .url = "https://codeberg.org/Games-by-Mason/tracy_zig/archive/main.tar.gz",
+            .hash = "tracy-0.0.0-R7l8BatJAQBbSjpfv7YHTyPK4AfRgyG0c--WxxFbL3S8",
+        },
     },
     .paths = .{
         "build.zig",

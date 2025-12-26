@@ -7,7 +7,7 @@ const Chunk = @import("terrain").Chunk;
 
 const ChunkModel = @This();
 
-pub fn generateForChunk(_: std.mem.Allocator, _: *Chunk) !ChunkModel {
+pub fn generateForChunk(_: std.mem.Allocator, _: Chunk) !ChunkModel {
     return .{};
 }
 

@@ -8,14 +8,14 @@ pub const Block = struct {
     y: i32 = 0,
     z: i32 = 0,
 
-    pub fn getChunk(self: Block) Chunk {
+    pub inline fn getChunk(self: Block) Chunk {
         return .{
             .x = self.x >> 4,
             .z = self.z >> 4,
         };
     }
 
-    pub fn isWithinChunk(self: Block) bool {
+    pub inline fn isWithinChunk(self: Block) bool {
         if (self.x < 0 or self.y < 0 or self.z < 0)
             return false;
         if (self.x >= 16 or self.y >= 128 or self.z >= 16)
@@ -23,27 +23,27 @@ pub const Block = struct {
         return true;
     }
 
-    pub fn north(self: Block) Block {
+    pub inline fn north(self: Block) Block {
         return .{ .x = self.x, .y = self.y, .z = self.z - 1 };
     }
 
-    pub fn east(self: Block) Block {
+    pub inline fn east(self: Block) Block {
         return .{ .x = self.x + 1, .y = self.y, .z = self.z };
     }
 
-    pub fn south(self: Block) Block {
+    pub inline fn south(self: Block) Block {
         return .{ .x = self.x, .y = self.y, .z = self.z + 1 };
     }
 
-    pub fn west(self: Block) Block {
+    pub inline fn west(self: Block) Block {
         return .{ .x = self.x - 1, .y = self.y, .z = self.z };
     }
 
-    pub fn up(self: Block) Block {
+    pub inline fn up(self: Block) Block {
         return .{ .x = self.x, .y = self.y + 1, .z = self.z };
     }
 
-    pub fn down(self: Block) Block {
+    pub inline fn down(self: Block) Block {
         return .{ .x = self.x, .y = self.y - 1, .z = self.z };
     }
 };

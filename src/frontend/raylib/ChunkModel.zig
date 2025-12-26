@@ -6,6 +6,7 @@ const rl = @import("raylib");
 const coord = @import("coord");
 const Chunk = @import("terrain").Chunk;
 const blocks = @import("blocks");
+const tracy = @import("tracy");
 
 const ChunkModel = @This();
 
@@ -90,6 +91,13 @@ fn generateMeshesForChunk(alloc: std.mem.Allocator, chunk: Chunk) ![]rl.Mesh {
 }
 
 fn generateSingleMesh(alloc: std.mem.Allocator, chunk: Chunk, offset: *usize) !rl.Mesh {
+    const zone = tracy.Zone.begin(.{
+        .name = "Chunk meshing (rl)",
+        .src = @src(),
+        .color = .orange,
+    });
+    defer zone.end();
+
     // Slice of the remaining data
     const begin = offset.*;
     const remaining = chunk.blocks_data[begin..];
@@ -118,21 +126,36 @@ fn generateSingleMesh(alloc: std.mem.Allocator, chunk: Chunk, offset: *usize) !r
         if (block_id == 0)
             continue;
 
+        const block_zone = tracy.Zone.begin(.{
+            .name = "Single block meshing (rl)",
+            .src = @src(),
+            .color = .orange_red,
+        });
+        defer block_zone.end();
+
         const block = blocks.table[block_id];
         // TODO: find solution for rendering transparent blocks
 
         // Block coordinates
         const xyz = Chunk.coordFromIndex(i);
 
-        // TODO: get block model for real
-        // TODO: read context for real
         const context: blocks.Context = chunk.getContext(xyz);
         const face_count: c_ushort = @intCast(blocks.models.faceCount(block.block_model, context));
+        if (face_count == 0)
+            continue;
+
         const vertex_count: c_ushort = face_count * 4;
 
         // Stop filling buffers: we can't use more vertex indices
         if (next_id > std.math.maxInt(c_ushort) - vertex_count)
             break;
+
+        const writemesh_zone = tracy.Zone.begin(.{
+            .name = "Write block mesh",
+            .src = @src(),
+            .color = .orange_red1,
+        });
+        defer writemesh_zone.end();
 
         // Add vertices
         blocks.models.writeVertices(&vertices, block.block_model, xyz, context);
@@ -145,15 +168,8 @@ fn generateSingleMesh(alloc: std.mem.Allocator, chunk: Chunk, offset: *usize) !r
         try colors.appendNTimes(rl.mem, 0xffffffff, vertex_count);
 
         // Add UV
-        const before = texcoords.items.len;
         try texcoords.ensureUnusedCapacity(rl.mem, vertex_count * 2);
         blocks.uv.writeUV(&texcoords, context, block_id);
-        const after = texcoords.items.len;
-        if (after - before != vertex_count * 2) {
-            std.debug.print("Error with block {s}\n", .{block.name});
-            std.debug.print("Expected {} uv components, got {}\n", .{ vertex_count * 2, after - before });
-            unreachable;
-        }
 
         // Count up the vertex indices
         next_id += vertex_count;

@@ -1,8 +1,25 @@
 const std = @import("std");
 
+pub const Frontend = enum {
+    dummy,
+    raylib,
+};
+
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
+
+    const tracy_enabled = b.option(
+        bool,
+        "tracy",
+        "Build with Tracy support.",
+    ) orelse false;
+
+    const frontend = b.option(
+        Frontend,
+        "frontend",
+        "Select the frontend",
+    ) orelse .dummy;
 
     // Dependencies
     const network_dep = b.dependency("network", .{});
@@ -11,6 +28,12 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
+    const tracy_dep = b.dependency("tracy", .{
+        .target = target,
+        .optimize = optimize,
+    });
+
+    const tracy_impl_mod = if (tracy_enabled) tracy_dep.module("tracy_impl_enabled") else tracy_dep.module("tracy_impl_disabled");
 
     // Internal modules
     const nbt_mod = b.addModule("nbt", .{
@@ -41,6 +64,7 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .imports = &.{
             .{ .name = "coord", .module = coord_mod },
+            .{ .name = "tracy", .module = tracy_dep.module("tracy") },
         },
     });
 
@@ -67,10 +91,6 @@ pub fn build(b: *std.Build) void {
         .imports = &.{
             .{ .name = "raylib", .module = raylib_dep.module("raylib") },
             .{ .name = "raygui", .module = raylib_dep.module("raygui") },
-            .{ .name = "terrain", .module = terrain_mod },
-            .{ .name = "entities", .module = entities_mod },
-            .{ .name = "coord", .module = coord_mod },
-            .{ .name = "blocks", .module = blocks_mod },
         },
     });
     raylib_io_mod.linkLibrary(raylib_dep.artifact("raylib"));
@@ -78,20 +98,17 @@ pub fn build(b: *std.Build) void {
     const dummy_io_mod = b.addModule("io", .{
         .root_source_file = b.path("src/frontend/dummy/io.zig"),
         .target = target,
-        .imports = &.{
-            .{ .name = "terrain", .module = terrain_mod },
-            .{ .name = "entities", .module = entities_mod },
-            .{ .name = "coord", .module = coord_mod },
-        },
     });
-
-    // TODO: how to make that a compile parameter
-    const frontend: enum { dummy, raylib } = .raylib;
 
     const io_mod = switch (frontend) {
         .dummy => dummy_io_mod,
         .raylib => raylib_io_mod,
     };
+    io_mod.addImport("terrain", terrain_mod);
+    io_mod.addImport("entities", entities_mod);
+    io_mod.addImport("coord", coord_mod);
+    io_mod.addImport("blocks", blocks_mod);
+    io_mod.addImport("tracy", tracy_dep.module("tracy"));
     terrain_mod.addImport("io", io_mod);
     blocks_mod.addImport("io", io_mod);
 
@@ -125,9 +142,12 @@ pub fn build(b: *std.Build) void {
                 // Dependencies
                 .{ .name = "network", .module = network_dep.module("network") },
                 .{ .name = "spsc_queue", .module = spsc_queue_dep.module("spsc_queue") },
+                .{ .name = "tracy", .module = tracy_dep.module("tracy") },
             },
         }),
     });
+
+    exe.root_module.addImport("tracy_impl", tracy_impl_mod);
 
     b.installArtifact(exe);
 

@@ -3,6 +3,7 @@ const io = @import("io");
 const network = @import("network");
 const net = @import("net");
 const queue = @import("spsc_queue");
+const tracy = @import("tracy");
 
 const Entities = @import("entities").EntityManager;
 const World = @import("terrain").World;
@@ -294,11 +295,31 @@ pub fn run(alloc: std.mem.Allocator) !void {
             continue;
         }
 
-        try window.update();
+        {
+            const zone = tracy.Zone.begin(.{
+                .name = "Window update",
+                .src = @src(),
+                .color = .red,
+            });
+            defer zone.end();
+
+            try window.update();
+        }
 
         window.beginDraw();
-        window.drawWorld(world, entities);
-        window.drawGui();
+
+        {
+            const zone = tracy.Zone.begin(.{
+                .name = "Window draw",
+                .src = @src(),
+                .color = .green,
+            });
+            defer zone.end();
+
+            window.drawWorld(world, entities);
+            window.drawGui();
+        }
+
         window.endDraw();
     }
 

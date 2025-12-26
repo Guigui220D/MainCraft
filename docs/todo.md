@@ -11,7 +11,6 @@
 - [ ] Inventories and items rendering API in I/O
 - [ ] Player controls
 - [ ] Menus
-- [ ] Profiling (tracy integration)
 - [ ] Setting blocks
 - [ ] Chunk metadata
 - [ ] Lighting engine

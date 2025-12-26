@@ -3,14 +3,17 @@
 const std = @import("std");
 const coord = @import("coord");
 const io = @import("io");
+const blocks = @import("blocks");
 
 const Chunk = @This();
 
 pub const width = 16;
 pub const height = 256;
 
+pub const block_data_len = (height * width * width);
+
 coords: coord.Chunk,
-blocks: []u8,
+blocks_data: []u8,
 model: ?io.ChunkModel,
 
 pub fn initEmpty(alloc: std.mem.Allocator, coords: coord.Chunk) !*Chunk {
@@ -20,12 +23,12 @@ pub fn initEmpty(alloc: std.mem.Allocator, coords: coord.Chunk) !*Chunk {
 
     ret.* = .{
         .coords = coords,
-        .blocks = try alloc.alloc(u8, (height * width * width)),
+        .blocks_data = try alloc.alloc(u8, block_data_len),
         .model = null,
     };
 
     // Fill with zeros
-    for (ret.blocks) |*bl| {
+    for (ret.blocks_data) |*bl| {
         bl.* = 0;
     }
 
@@ -46,7 +49,7 @@ pub fn setChunkData(self: *Chunk, data: []const u8, x1: i32, y1: i32, z1: i32, x
         var z = z1;
         while (z < z2) : (z += 1) {
             const dest_offset: u32 = @bitCast(x << 11 | z << 7 | y1);
-            @memcpy(self.blocks[dest_offset..(dest_offset + dy)], remaining[0..dy]);
+            @memcpy(self.blocks_data[dest_offset..(dest_offset + dy)], remaining[0..dy]);
             remaining = remaining[dy..];
         }
     }
@@ -74,7 +77,25 @@ pub fn updateModel(self: *Chunk, alloc: std.mem.Allocator) !void {
 }
 
 pub fn deinit(self: Chunk, alloc: std.mem.Allocator) void {
-    alloc.free(self.blocks);
+    alloc.free(self.blocks_data);
+}
+
+pub fn getBlockId(self: Chunk, pos: coord.Block) u8 {
+    if (!pos.isWithinChunk())
+        return 0;
+    const index = indexFromCoord(pos);
+    return self.blocks_data[index];
+}
+
+pub fn getContext(self: Chunk, pos: coord.Block) blocks.Context {
+    return .{
+        .north = !blocks.table[getBlockId(self, pos.north())].full_block,
+        .east = !blocks.table[getBlockId(self, pos.east())].full_block,
+        .south = !blocks.table[getBlockId(self, pos.south())].full_block,
+        .west = !blocks.table[getBlockId(self, pos.west())].full_block,
+        .up = !blocks.table[getBlockId(self, pos.up())].full_block,
+        .down = !blocks.table[getBlockId(self, pos.down())].full_block,
+    };
 }
 
 /// Pass an index of the blocks array, get the corresponding block coords
@@ -85,4 +106,28 @@ pub inline fn coordFromIndex(index: usize) coord.Block {
         .y = @mod(i, 128),
         .z = @mod(@divFloor(i, 128), 16),
     };
+}
+
+/// Pass a set of coordinates that is withing the chunk, get the offset of that block in the blocks array
+pub inline fn indexFromCoord(coords: coord.Block) usize {
+    std.debug.assert(coords.isWithinChunk());
+
+    return @intCast(coords.y + coords.x * 128 * 16 + coords.z * 128);
+}
+
+test "coords from index from coords" {
+    var rng = std.Random.DefaultPrng.init(@intCast(std.testing.random_seed));
+    const random = rng.random();
+
+    const in = coord.Block{
+        .x = random.intRangeLessThan(i32, 0, 16),
+        .y = random.intRangeLessThan(i32, 0, 128),
+        .z = random.intRangeLessThan(i32, 0, 16),
+    };
+
+    const index = indexFromCoord(in);
+
+    const out = coordFromIndex(index);
+
+    try std.testing.expectEqualDeep(in, out);
 }

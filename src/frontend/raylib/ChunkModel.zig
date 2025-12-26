@@ -77,11 +77,10 @@ fn generateMeshesForChunk(alloc: std.mem.Allocator, chunk: Chunk) ![]rl.Mesh {
 
     // Remaining data
     var offset: usize = 0; // advanced by generateSingleMesh
-    const data: []const u8 = chunk.blocks;
 
     // Generate meshes as long as needed
-    while (offset < data.len) {
-        const mesh = try generateSingleMesh(alloc, data, &offset);
+    while (offset < Chunk.block_data_len) {
+        const mesh = try generateSingleMesh(alloc, chunk, &offset);
         errdefer mesh.unload();
 
         try meshes.append(alloc, mesh);
@@ -90,10 +89,10 @@ fn generateMeshesForChunk(alloc: std.mem.Allocator, chunk: Chunk) ![]rl.Mesh {
     return try meshes.toOwnedSlice(alloc);
 }
 
-fn generateSingleMesh(alloc: std.mem.Allocator, block_data: []const u8, offset: *usize) !rl.Mesh {
+fn generateSingleMesh(alloc: std.mem.Allocator, chunk: Chunk, offset: *usize) !rl.Mesh {
     // Slice of the remaining data
     const begin = offset.*;
-    const remaining = block_data[begin..];
+    const remaining = chunk.blocks_data[begin..];
 
     // Dynamic arraylists used to alloc necessary memory for model data
     // TODO: put the transparent blocks in a distinct array
@@ -128,10 +127,9 @@ fn generateSingleMesh(alloc: std.mem.Allocator, block_data: []const u8, offset: 
 
         // TODO: get block model for real
         // TODO: read context for real
-        const context: blocks.Context = .{};
+        const context: blocks.Context = chunk.getContext(xyz);
         const face_count: c_ushort = @intCast(blocks.models.faceCount(.full, context));
         const vertex_count: c_ushort = face_count * 4;
-        std.debug.assert(vertex_count == 3 * 8);
 
         // Stop filling buffers: we can't use more vertex indices
         if (next_id > std.math.maxInt(c_ushort) - vertex_count)

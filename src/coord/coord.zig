@@ -22,6 +22,30 @@ pub const Block = struct {
             return false;
         return true;
     }
+
+    pub fn north(self: Block) Block {
+        return .{ .x = self.x, .y = self.y, .z = self.z - 1 };
+    }
+
+    pub fn east(self: Block) Block {
+        return .{ .x = self.x + 1, .y = self.y, .z = self.z };
+    }
+
+    pub fn south(self: Block) Block {
+        return .{ .x = self.x, .y = self.y, .z = self.z + 1 };
+    }
+
+    pub fn west(self: Block) Block {
+        return .{ .x = self.x - 1, .y = self.y, .z = self.z };
+    }
+
+    pub fn up(self: Block) Block {
+        return .{ .x = self.x, .y = self.y + 1, .z = self.z };
+    }
+
+    pub fn down(self: Block) Block {
+        return .{ .x = self.x, .y = self.y - 1, .z = self.z };
+    }
 };
 
 pub const Vec3f = struct {

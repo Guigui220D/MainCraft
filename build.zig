@@ -51,6 +51,7 @@ pub fn build(b: *std.Build) void {
             .{ .name = "coord", .module = coord_mod },
         },
     });
+    terrain_mod.addImport("blocks", blocks_mod);
 
     const entities_mod = b.addModule("entities", .{
         .root_source_file = b.path("src/entities/entities.zig"),

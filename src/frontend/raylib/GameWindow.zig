@@ -23,7 +23,7 @@ cube_position: rl.Vector3,
 player_position: rl.Vector3,
 first_player_pos: bool = true,
 focused: bool = true,
-f3_enabled: bool = true,
+f3_enabled: bool = false,
 f3_buf: [512]u8 = undefined,
 f3_str: [:0]const u8 = undefined,
 wiremesh: bool = false,
@@ -94,7 +94,23 @@ pub fn update(self: *GameWindow) !void {
 
     if (self.f3_enabled) {
         const pos = self.camera.position;
-        self.f3_str = try std.fmt.bufPrintZ(&self.f3_buf, "x: {}\ny: {}\nz: {}\nfocused: {}", .{ pos.x, pos.y, pos.z, self.focused });
+        // TODO: coords function for that
+        var pos_block: coord.Block = .{ .x = @intFromFloat(pos.x), .y = @intFromFloat(pos.y), .z = @intFromFloat(pos.z) };
+        if (pos.x < 0)
+            pos_block.x -= 1;
+        if (pos.y < 0)
+            pos_block.y -= 1;
+        if (pos.z < 0)
+            pos_block.z -= 1;
+        const pos_chunk = pos_block.getChunk();
+        const pos_in_chunk = pos_block.getPosInChunk();
+        self.f3_str = try std.fmt.bufPrintZ(&self.f3_buf, "pos: {}\nblock: {}\nchunk: {}\nin chunk: {}\nfocused: {}", .{
+            pos,
+            pos_block,
+            pos_chunk,
+            pos_in_chunk,
+            self.focused,
+        });
     }
 }
 

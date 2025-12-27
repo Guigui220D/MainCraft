@@ -10,8 +10,16 @@ pub const Block = struct {
 
     pub inline fn getChunk(self: Block) Chunk {
         return .{
-            .x = self.x >> 4,
-            .z = self.z >> 4,
+            .x = @divFloor(self.x, 16),
+            .z = @divFloor(self.z, 16),
+        };
+    }
+
+    pub inline fn getPosInChunk(self: Block) Block {
+        return .{
+            .x = @mod(self.x, 16),
+            .y = self.y,
+            .z = @mod(self.z, 16),
         };
     }
 

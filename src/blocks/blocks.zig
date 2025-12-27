@@ -15,7 +15,7 @@ pub const table = [256]Block{
     // 0
     .{ .name = "air", .full_block = false },
     .{ .name = "stone", .tex_id = 1 },
-    .{ .name = "grass", .tex_id = 3, .top_tex_id = 0, .bottom_tex_id = 0, .uv_type = .barrel },
+    .{ .name = "grass", .tex_id = 3, .top_tex_id = 0, .bottom_tex_id = 2, .uv_type = .barrel },
     .{ .name = "dirt", .tex_id = 2 },
     .{ .name = "cobblestone", .tex_id = texpos(0, 1) },
     .{ .name = "wood", .tex_id = 4 },
@@ -47,7 +47,7 @@ pub const table = [256]Block{
     .{},
     .{ .name = "tallgrass", .tex_id = texpos(7, 2), .full_block = false, .block_model = .plant, .uv_type = .plant },
     // 32
-    .{},
+    .{ .name = "deadbush", .tex_id = texpos(7, 3), .full_block = false, .block_model = .plant, .uv_type = .plant },
     .{},
     .{},
     .{},

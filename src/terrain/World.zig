@@ -85,6 +85,19 @@ pub fn doChunkMap(self: *World, x: i32, y: i16, z: i32, size_x: u8, size_y: u8, 
     }
 }
 
+pub fn setBlockId(self: *World, pos: coord.Block, block_id: u8) !void {
+    const chunk_pos = pos.getChunk();
+    const chunk = self.getChunk(chunk_pos) orelse return error.ChunkNotLoaded;
+    const pos_in_chunk = pos.getPosInChunk();
+
+    std.debug.print(" on chunk {any} at {any}\n", .{ chunk_pos, pos_in_chunk });
+
+    std.debug.assert(pos_in_chunk.isWithinChunk());
+
+    chunk.setBlockId(pos_in_chunk, block_id);
+    try chunk.updateModel(self.alloc);
+}
+
 /// Adds an empty chunk in the position(assumes it doesn't exist)
 fn addChunk(self: *World, coords: coord.Chunk) !void {
     const new_chunk = try Chunk.initEmpty(self.alloc, coords);

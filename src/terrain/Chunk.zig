@@ -103,6 +103,13 @@ pub fn getBlockId(self: Chunk, pos: coord.Block) u8 {
     return self.blocks_data[index];
 }
 
+pub fn setBlockId(self: *Chunk, pos: coord.Block, block_id: u8) void {
+    std.debug.assert(pos.isWithinChunk());
+
+    const index = indexFromCoord(pos);
+    self.blocks_data[index] = block_id;
+}
+
 pub fn getContext(self: Chunk, pos: coord.Block) blocks.Context {
     const zone = tracy.Zone.begin(.{
         .name = "Get context",

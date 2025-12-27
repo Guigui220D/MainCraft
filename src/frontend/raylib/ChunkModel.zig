@@ -26,8 +26,6 @@ pub fn initMesher() !void {
     texture = try rl.loadTexture("res/jar/minecraft/terrain.png");
     errdefer texture.unload();
 
-    // Load shaders
-
     // Init materials
     material = try rl.loadMaterialDefault();
     errdefer material.unload();

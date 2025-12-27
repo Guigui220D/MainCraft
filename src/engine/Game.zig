@@ -150,7 +150,22 @@ pub fn handlePacket(self: *Game, packet: net.InboundPacket) !void {
             try self.world.doPreChunk(.{ .x = pc.x_position, .z = pc.z_position }, pc.mode);
         },
         .map_chunk_51 => |mc| {
-            try self.world.doChunkMap(mc.x_position, mc.y_position, mc.z_position, mc.x_size, mc.y_size, mc.z_size, mc.data);
+            try self.world.doChunkMap(
+                mc.x_position,
+                mc.y_position,
+                mc.z_position,
+                mc.x_size,
+                mc.y_size,
+                mc.z_size,
+                mc.data,
+            );
+        },
+        .block_change_53 => |bc| {
+            std.debug.print("Set Block\n", .{});
+            try self.world.setBlockId(
+                .{ .x = bc.x_position, .y = bc.y_position, .z = bc.z_position },
+                bc.block_id,
+            );
         },
         inline else => |pack| {
             if (!@hasDecl(@TypeOf(pack), "do_not_print"))

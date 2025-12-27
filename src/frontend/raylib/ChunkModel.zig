@@ -4,7 +4,8 @@
 const std = @import("std");
 const rl = @import("raylib");
 const coord = @import("coord");
-const Chunk = @import("terrain").Chunk;
+const terrain = @import("terrain");
+const Chunk = terrain.Chunk;
 const blocks = @import("blocks");
 const tracy = @import("tracy");
 
@@ -112,6 +113,8 @@ fn generateMeshesForChunk(alloc: std.mem.Allocator, chunk: Chunk) !struct { []rl
         transparent_meshes.deinit(alloc);
     }
 
+    const opacity_cache = chunk.getOpacityCache();
+
     // Remaining data
     var offset: usize = 0; // advanced by generateSingleMesh
 
@@ -119,7 +122,7 @@ fn generateMeshesForChunk(alloc: std.mem.Allocator, chunk: Chunk) !struct { []rl
 
     // Generate meshes as long as needed
     while (offset < Chunk.block_data_len) {
-        const mesh = try generateSingleMesh(alloc, chunk, &offset, false) orelse continue;
+        const mesh = try generateSingleMesh(alloc, chunk, opacity_cache, &offset, false) orelse continue;
         errdefer mesh.unload();
 
         try meshes.append(alloc, mesh);
@@ -131,7 +134,7 @@ fn generateMeshesForChunk(alloc: std.mem.Allocator, chunk: Chunk) !struct { []rl
 
     // Generate meshes as long as needed
     while (offset < Chunk.block_data_len) {
-        const mesh = try generateSingleMesh(alloc, chunk, &offset, true) orelse continue;
+        const mesh = try generateSingleMesh(alloc, chunk, opacity_cache, &offset, true) orelse continue;
         errdefer mesh.unload();
 
         try transparent_meshes.append(alloc, mesh);
@@ -145,7 +148,7 @@ fn generateMeshesForChunk(alloc: std.mem.Allocator, chunk: Chunk) !struct { []rl
 }
 
 // TODO: two passes aren't necessary, can collect both meshes in one go
-fn generateSingleMesh(alloc: std.mem.Allocator, chunk: Chunk, offset: *usize, transparent: bool) !?rl.Mesh {
+fn generateSingleMesh(alloc: std.mem.Allocator, chunk: Chunk, opacity_cache: terrain.ChunkOpacityCache, offset: *usize, transparent: bool) !?rl.Mesh {
     const zone = tracy.Zone.begin(.{
         .name = "Chunk meshing (rl)",
         .src = @src(),
@@ -194,7 +197,7 @@ fn generateSingleMesh(alloc: std.mem.Allocator, chunk: Chunk, offset: *usize, tr
         // Block coordinates
         const xyz = Chunk.coordFromIndex(i);
 
-        const context: blocks.Context = chunk.getContext(xyz);
+        const context: blocks.Context = opacity_cache.getContext(xyz);
         const face_count: c_ushort = @intCast(blocks.models.faceCount(block.block_model, context));
         if (face_count == 0)
             continue;

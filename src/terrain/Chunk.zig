@@ -6,10 +6,11 @@ const io = @import("io");
 const blocks = @import("blocks");
 const tracy = @import("tracy");
 
+const OpacityCache = @import("OpacityCache.zig");
 const Chunk = @This();
 
 pub const width = 16;
-pub const height = 256;
+pub const height = 128;
 
 pub const block_data_len = (height * width * width);
 
@@ -108,6 +109,47 @@ pub fn setBlockId(self: *Chunk, pos: coord.Block, block_id: u8) void {
 
     const index = indexFromCoord(pos);
     self.blocks_data[index] = block_id;
+}
+
+pub fn getOpacityCache(self: Chunk) OpacityCache {
+    var ret: OpacityCache = undefined;
+
+    for (&ret.bitfield, 0..) |*slice_x, x_| {
+        for (slice_x, 0..) |*column, z_| {
+            const x: i32 = @as(i32, @intCast(x_)) - 1;
+            const z: i32 = @as(i32, @intCast(z_)) - 1;
+
+            // Preset zeros
+            column.* = 0;
+
+            if (x == -1 or x == 16 or z == -1 or z == 16) {
+                // Neighboring chunk (TODO)
+                continue;
+            }
+
+            // Preset ones on all blocks except out of bounds
+            column.* = @as(u130, std.math.maxInt(u128)) << 1; // 0111...1110
+
+            // Local column
+            const xyz = coord.Block{ .x = x, .y = 0, .z = z };
+            const index_begin = indexFromCoord(xyz);
+            for (index_begin..(index_begin + Chunk.height), 0..) |index, y_| {
+                const y: u8 = @intCast(y_);
+
+                const block_id = self.blocks_data[index];
+                const is_opaque = (block_id != 0 and blocks.table[block_id].full_block);
+
+                if (is_opaque)
+                    continue;
+
+                // Set bit of non-opaque block
+                const mask = ~(@as(u130, 1) << (y + 1));
+                column.* &= mask;
+            }
+        }
+    }
+
+    return ret;
 }
 
 pub fn getContext(self: Chunk, pos: coord.Block) blocks.Context {

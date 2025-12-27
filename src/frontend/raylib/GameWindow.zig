@@ -132,8 +132,27 @@ pub fn drawWorld(self: GameWindow, world: terrain.World, entity_manager: entitie
         const chunk_pos = entry.key_ptr.*;
         if (self.f3_enabled) {
             // Draw chunk bottom/bounds (debug)
-            rl.drawCubeWires(.{ .x = @floatFromInt(chunk_pos.x * 16 + 8), .y = 128, .z = @floatFromInt(chunk_pos.z * 16 + 8) }, 16, 256, 16, .red);
+            rl.drawCubeWires(.{ .x = @floatFromInt(chunk_pos.x * 16 + 8), .y = 64, .z = @floatFromInt(chunk_pos.z * 16 + 8) }, 16, 128, 16, .red);
             rl.drawPlane(.{ .x = @floatFromInt(chunk_pos.x * 16 + 8), .y = 0, .z = @floatFromInt(chunk_pos.z * 16 + 8) }, .{ .x = 16, .y = 16 }, .magenta);
+
+            // Debug chunk opacity cache
+            // TODO: remove
+            if (chunk_pos.x == 0 and chunk_pos.z == 0) {
+                const opacity_cache = chunk.getOpacityCache();
+                for (chunk.blocks_data, 0..) |_, i| {
+                    const xyz = terrain.Chunk.coordFromIndex(i);
+                    const is_opaque = opacity_cache.isOpaque(xyz);
+                    if (!is_opaque) {
+                        rl.drawCube(
+                            .{ .x = @as(f32, @floatFromInt(chunk_pos.x * 16 + xyz.x)) + 0.5, .y = @as(f32, @floatFromInt(xyz.y)) + 0.5, .z = @as(f32, @floatFromInt(chunk_pos.z * 16 + xyz.z)) + 0.5 },
+                            0.1,
+                            0.1,
+                            0.1,
+                            .green,
+                        );
+                    }
+                }
+            }
         }
         // Draw the solid part of the chunk
         if (chunk.model) |model| {

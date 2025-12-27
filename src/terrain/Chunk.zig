@@ -112,6 +112,13 @@ pub fn setBlockId(self: *Chunk, pos: coord.Block, block_id: u8) void {
 }
 
 pub fn getOpacityCache(self: Chunk) OpacityCache {
+    const zone = tracy.Zone.begin(.{
+        .name = "Get opacity cache",
+        .src = @src(),
+        .color = .blue,
+    });
+    defer zone.end();
+
     var ret: OpacityCache = undefined;
 
     for (&ret.bitfield, 0..) |*slice_x, x_| {
@@ -127,14 +134,14 @@ pub fn getOpacityCache(self: Chunk) OpacityCache {
                 continue;
             }
 
-            // Preset ones on all blocks except out of bounds
-            column.* = @as(u130, std.math.maxInt(u128)) << 1; // 0111...1110
+            // Preset ones on all blocks
+            column.* = std.math.maxInt(u128);
 
             // Local column
             const xyz = coord.Block{ .x = x, .y = 0, .z = z };
             const index_begin = indexFromCoord(xyz);
             for (index_begin..(index_begin + Chunk.height), 0..) |index, y_| {
-                const y: u8 = @intCast(y_);
+                const y: u7 = @intCast(y_);
 
                 const block_id = self.blocks_data[index];
                 const is_opaque = (block_id != 0 and blocks.table[block_id].full_block);
@@ -143,7 +150,7 @@ pub fn getOpacityCache(self: Chunk) OpacityCache {
                     continue;
 
                 // Set bit of non-opaque block
-                const mask = ~(@as(u130, 1) << (y + 1));
+                const mask = ~(@as(u128, 1) << y);
                 column.* &= mask;
             }
         }

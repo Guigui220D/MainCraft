@@ -132,7 +132,7 @@ pub fn drawWorld(self: GameWindow, world: terrain.World, entity_manager: entitie
         const chunk_pos = entry.key_ptr.*;
         if (self.f3_enabled) {
             // Draw chunk bottom/bounds (debug)
-            rl.drawCubeWires(.{ .x = @floatFromInt(chunk_pos.x * 16 + 8), .y = 128, .z = @floatFromInt(chunk_pos.z * 16 + 8) }, 16, 256, 16, .red);
+            rl.drawCubeWires(.{ .x = @floatFromInt(chunk_pos.x * 16 + 8), .y = 64, .z = @floatFromInt(chunk_pos.z * 16 + 8) }, 16, 128, 16, .red);
             rl.drawPlane(.{ .x = @floatFromInt(chunk_pos.x * 16 + 8), .y = 0, .z = @floatFromInt(chunk_pos.z * 16 + 8) }, .{ .x = 16, .y = 16 }, .magenta);
         }
         // Draw the solid part of the chunk

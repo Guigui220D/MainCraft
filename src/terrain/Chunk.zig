@@ -9,7 +9,7 @@ const tracy = @import("tracy");
 const Chunk = @This();
 
 pub const width = 16;
-pub const height = 256;
+pub const height = 128;
 
 pub const block_data_len = (height * width * width);
 

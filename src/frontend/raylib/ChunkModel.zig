@@ -220,7 +220,8 @@ fn generateSingleMesh(alloc: std.mem.Allocator, chunk: Chunk, offset: *usize, tr
         blocks.models.materializeFaces(&indices, face_count, next_id, false);
 
         // Colors (later based on chunk lighting)
-        try colors.appendNTimes(rl.mem, 0xffffffff, vertex_count);
+        try colors.ensureUnusedCapacity(rl.mem, vertex_count);
+        blocks.uv.writeColors(&colors, context, vertex_count, block_id);
 
         // Add UV
         try texcoords.ensureUnusedCapacity(rl.mem, vertex_count * 2);

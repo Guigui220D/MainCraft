@@ -1,5 +1,7 @@
 //! List of all existing blocks
 
+const std = @import("std");
+
 const Block = @import("Block.zig");
 
 pub const models = @import("block_models.zig");
@@ -9,6 +11,8 @@ pub const uv = @import("uv.zig");
 fn texpos(x: comptime_int, y: comptime_int) comptime_int {
     return y * 16 + x;
 }
+
+// TODO: Struct containing all block ids by name as decls for comptime
 
 /// Table of all block types
 pub const table = [256]Block{
@@ -34,7 +38,7 @@ pub const table = [256]Block{
     .{ .name = "log", .tex_id = texpos(4, 1), .top_tex_id = texpos(5, 1), .bottom_tex_id = texpos(5, 1), .uv_type = .barrel },
     .{ .name = "leaves", .tex_id = texpos(4, 3), .full_block = false },
     .{},
-    .{},
+    .{ .name = "glass", .tex_id = texpos(1, 3), .full_block = false },
     .{ .name = "oreLapis", .tex_id = texpos(0, 10) },
     .{},
     .{},

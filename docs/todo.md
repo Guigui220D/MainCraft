@@ -19,8 +19,7 @@
 
 ## Raylib I/O
 
-- [ ] Less wasteful mesh building for chunks
 - [ ] Entity ressources and rendering
-- [ ] Transparent block support
 - [ ] Inventories and items rendering
 - [ ] Ambient occlusion
+- [ ] Mesh coloring

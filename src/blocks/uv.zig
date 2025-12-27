@@ -51,6 +51,40 @@ pub fn writeUV(arraylist: *std.ArrayList(f32), context: Context, block_id: u8) v
     }
 }
 
+// TODO: based on biome
+const grass_color: u32 = 0xff44bb44;
+const foliage_color: u32 = 0xff449944;
+const default_color: u32 = 0xffffffff;
+
+/// Write the vertex colors depending on the context and block id
+pub fn writeColors(arraylist: *std.ArrayList(u32), context: Context, vertex_count: usize, block_id: u8) void {
+    switch (block_id) {
+        // TODO: way to get block ids by names
+        2 => { // Grass
+            if (!context.up) {
+                arraylist.appendNTimesAssumeCapacity(default_color, vertex_count);
+            } else {
+                if (context.north)
+                    arraylist.appendNTimesAssumeCapacity(default_color, 4);
+                if (context.east)
+                    arraylist.appendNTimesAssumeCapacity(default_color, 4);
+                if (context.south)
+                    arraylist.appendNTimesAssumeCapacity(default_color, 4);
+                if (context.west)
+                    arraylist.appendNTimesAssumeCapacity(default_color, 4);
+                // up
+                arraylist.appendNTimesAssumeCapacity(grass_color, 4);
+                if (context.down)
+                    arraylist.appendNTimesAssumeCapacity(default_color, 4);
+            }
+        },
+        18, 31 => { // Leaves, Tallgrass
+            arraylist.appendNTimesAssumeCapacity(foliage_color, vertex_count);
+        },
+        else => arraylist.appendNTimesAssumeCapacity(default_color, vertex_count),
+    }
+}
+
 /// Write uv for the default basic scenario of blocks
 fn writeBasicUV(arraylist: *std.ArrayList(f32), context: Context, tex_id: u8) void {
     const face_count = context.faceCount();

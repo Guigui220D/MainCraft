@@ -8,16 +8,17 @@ const Context = @import("blocks").Context;
 const OpacityCache = @This();
 
 // Bit set means opaque block
-bitfield: [18][18]u128,
+//         x   y   z(2 groups)
+bitfield: [18][18][2]u64,
 
-pub fn isOpaque(self: OpacityCache, coords: coord.Block) bool {
+pub inline fn isOpaque(self: OpacityCache, coords: coord.Block) bool {
     if (coords.y < 0)
         return true; // Avoids rendering bottom of bedrock
     if (coords.y > 128)
         return false;
 
-    const bit_column = self.bitfield[@intCast(coords.x + 1)][@intCast(coords.z + 1)];
-    const mask = @as(u128, 1) << @as(u7, @intCast(coords.y));
+    const bit_column = self.bitfield[@intCast(coords.x + 1)][@intCast(coords.z + 1)][@intCast(@divFloor(coords.y, 64))];
+    const mask = @as(u64, 1) << @intCast(@mod(coords.y, 64));
 
     return (bit_column & mask) != 0;
 }

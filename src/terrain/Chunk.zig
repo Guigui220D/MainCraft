@@ -123,35 +123,35 @@ pub fn getOpacityCache(self: Chunk) OpacityCache {
 
     for (&ret.bitfield, 0..) |*slice_x, x_| {
         for (slice_x, 0..) |*column, z_| {
-            const x: i32 = @as(i32, @intCast(x_)) - 1;
-            const z: i32 = @as(i32, @intCast(z_)) - 1;
+            for (column, 0..) |*sub_column, group| {
+                const x: i32 = @as(i32, @intCast(x_)) - 1;
+                const z: i32 = @as(i32, @intCast(z_)) - 1;
 
-            // Preset zeros
-            column.* = 0;
+                // Preset zeros
+                sub_column.* = 0;
 
-            if (x == -1 or x == 16 or z == -1 or z == 16) {
-                // Neighboring chunk (TODO)
-                continue;
-            }
-
-            // Preset ones on all blocks
-            column.* = std.math.maxInt(u128);
-
-            // Local column
-            const xyz = coord.Block{ .x = x, .y = 0, .z = z };
-            const index_begin = indexFromCoord(xyz);
-            for (index_begin..(index_begin + Chunk.height), 0..) |index, y_| {
-                const y: u7 = @intCast(y_);
-
-                const block_id = self.blocks_data[index];
-                const is_opaque = (block_id != 0 and blocks.table[block_id].full_block);
-
-                if (is_opaque)
+                if (x == -1 or x == 16 or z == -1 or z == 16) {
+                    // Neighboring chunk (TODO)
                     continue;
+                }
 
-                // Set bit of non-opaque block
-                const mask = ~(@as(u128, 1) << y);
-                column.* &= mask;
+                // Preset ones on all blocks
+                sub_column.* = std.math.maxInt(u64);
+
+                // Local column
+                const xyz = coord.Block{ .x = x, .y = @intCast(group * 64), .z = z };
+                const index_begin = indexFromCoord(xyz);
+                for (index_begin..(index_begin + (Chunk.height / 2)), 0..) |index, y_| {
+                    const block_id = self.blocks_data[index];
+                    const is_opaque = (block_id != 0 and blocks.table[block_id].full_block);
+
+                    if (is_opaque)
+                        continue;
+
+                    // Set bit of non-opaque block
+                    const mask = ~(@as(u64, 1) << @intCast(y_));
+                    sub_column.* &= mask;
+                }
             }
         }
     }

@@ -23,10 +23,10 @@ pub fn main(default_alloc: std.mem.Allocator) !void {
 
     // TODO: make menus
     while (!window.hasClosed()) {
-        if (!try client.update())
-            break;
-
         const dt = rl.getFrameTime();
+
+        if (!try client.update(dt))
+            break;
 
         // TODO: who should call that?
         try window.update(dt);

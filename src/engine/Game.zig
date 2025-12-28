@@ -53,6 +53,8 @@ pub fn init(alloc: std.mem.Allocator, client: *Client, window: *io.GameWindow) !
     ret.entities = try Entities.init(alloc);
     errdefer ret.entities.deinit();
 
+    ret.player = .init();
+
     return ret;
 }
 
@@ -62,13 +64,19 @@ pub fn deinit(self: *Game) void {
     self.entities.deinit();
 }
 
+pub fn update(self: *Game, delta: f32) !void {
+    self.player.update(delta);
+    _ = try self.maybeTick();
+}
+
 /// Run engine tick if enough time has passed
-pub fn maybeTick(self: *Game) !bool {
+fn maybeTick(self: *Game) !bool {
     const do_tick = self.shouldTick();
     if (do_tick)
         try self.tick();
     return do_tick;
 }
+
 /// Run engine tick
 fn tick(self: *Game) !void {
     if (self.client.is_connected) {
@@ -97,11 +105,11 @@ pub fn handlePacket(self: *Game, packet: net.InboundPacket) !void {
         },
         .player_look_move_13 => |plm| {
             self.last_plm = plm;
-            self.player.pos = .{
+            self.player.setPosition(.{
                 .x = plm.x_position,
                 .y = plm.y_position,
                 .z = plm.z_position,
-            };
+            });
         },
         .animation_18 => |anim| {
             self.entities.get(anim.entity_id).?.startAnimation(anim.animation);

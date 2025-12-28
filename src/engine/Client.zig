@@ -140,7 +140,7 @@ pub fn deinit(self: *Client) void {
 // TODO: better logging
 
 /// Update the client
-pub fn update(self: *Client) !bool {
+pub fn update(self: *Client, delta: f32) !bool {
     if (self.server_running.load(.acquire)) {
         // Pop new packet
         while (self.in_queue.front()) |new_packet| {
@@ -176,8 +176,8 @@ pub fn update(self: *Client) !bool {
             self.server_running.store(false, .release);
         }
 
-        // Run game prototype so servers gives us the goods
-        _ = try self.game.maybeTick();
+        // Run game update
+        _ = try self.game.update(delta);
 
         return true;
     } else {

@@ -41,7 +41,7 @@ pub fn init(_: std.mem.Allocator) !GameWindow {
     rl.setTargetFPS(60);
     rl.setExitKey(.f1);
 
-    //rl.setTraceLogLevel(.warning);
+    rl.setTraceLogLevel(.warning);
 
     try ChunkModel.initMesher();
     errdefer ChunkModel.deinitMesher();
@@ -98,10 +98,11 @@ pub fn update(self: *GameWindow, delta: f32) !void {
     }
 
     if (self.focused) {
-        // Update camera
         if (self.freecam) {
+            // Freecam mode
             self.camera.update(.free);
         } else {
+            // Update camera
             // Take mouse movement in account
             self.cam_rot = self.cam_rot.add(rl.getMouseDelta().scale(delta * 10.0));
             // Clamp vertical rotation
@@ -115,12 +116,32 @@ pub fn update(self: *GameWindow, delta: f32) !void {
             while (self.cam_rot.x < 0)
                 self.cam_rot.x += 360.0;
 
-            const cam_rel_pos = rl.Vector3.init(0, 0, -1.0)
-                .rotateByAxisAngle(.{ .x = 1.0, .y = 0.0, .z = 0.0 }, std.math.degreesToRadians(-self.cam_rot.y))
-                .rotateByAxisAngle(.{ .x = 0.0, .y = 1.0, .z = 0.0 }, std.math.degreesToRadians(-self.cam_rot.x));
+            const pitch = std.math.degreesToRadians(-self.cam_rot.y);
+            const yaw = std.math.degreesToRadians(-self.cam_rot.x);
 
+            const cam_rel_pos = rl.Vector3.init(0, 0, -1.0)
+                .rotateByAxisAngle(.{ .x = 1.0, .y = 0.0, .z = 0.0 }, pitch)
+                .rotateByAxisAngle(.{ .x = 0.0, .y = 1.0, .z = 0.0 }, yaw);
+
+            // TODO: give the player a cam pos function (for head bobbing and whatnot)
             self.camera.position = vec.coordToRlVec(game.player.pos);
             self.camera.target = self.camera.position.add(cam_rel_pos.scale(1.0));
+
+            game.player.setHeadAngle(yaw, pitch);
+
+            // Player movement
+            if (rl.isKeyDown(.w)) {
+                game.player.walkForwards();
+            }
+            if (rl.isKeyDown(.a)) {
+                game.player.walkLeft();
+            }
+            if (rl.isKeyDown(.s)) {
+                game.player.walkBackwards();
+            }
+            if (rl.isKeyDown(.d)) {
+                game.player.walkRight();
+            }
         }
     }
 

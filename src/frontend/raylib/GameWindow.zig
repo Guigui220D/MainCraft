@@ -3,10 +3,12 @@
 const std = @import("std");
 const rl = @import("raylib");
 
+const engine = @import("engine");
 const coord = @import("coord");
 const terrain = @import("terrain");
 const entities = @import("entities");
 
+const vec = @import("vec.zig");
 const ChunkModel = @import("ChunkModel.zig");
 
 const GameWindow = @This();
@@ -19,28 +21,25 @@ const screenHeight = 450;
 var compass: rl.Model = undefined;
 
 camera: rl.Camera,
+cam_rot: rl.Vector2,
 cube_position: rl.Vector3,
-player_position: rl.Vector3,
 first_player_pos: bool = true,
 focused: bool = true,
 f3_enabled: bool = false,
 f3_buf: [512]u8 = undefined,
 f3_str: [:0]const u8 = undefined,
+freecam: bool = false,
 wiremesh: bool = false,
+game: ?*engine.Game = null,
 
-pub fn init(alloc: std.mem.Allocator) !GameWindow {
+pub fn init(_: std.mem.Allocator) !GameWindow {
     rl.setConfigFlags(.{ .window_resizable = true, .window_highdpi = true });
-    rl.initWindow(screenWidth, screenHeight, "MainCraft");
+    rl.initWindow(screenWidth, screenHeight, "Maincraft by Guigui220D");
     errdefer rl.closeWindow();
 
     rl.disableCursor();
     rl.setTargetFPS(60);
     rl.setExitKey(.f1);
-
-    if (getSplashTitle(alloc) catch null) |ti| {
-        rl.setWindowTitle(ti);
-        alloc.free(ti);
-    }
 
     //rl.setTraceLogLevel(.warning);
 
@@ -59,7 +58,7 @@ pub fn init(alloc: std.mem.Allocator) !GameWindow {
             .projection = .perspective,
         },
         .cube_position = .init(0, 0, 0),
-        .player_position = undefined,
+        .cam_rot = .zero(),
     };
 }
 
@@ -67,7 +66,12 @@ pub fn hasClosed(_: GameWindow) bool {
     return rl.windowShouldClose();
 }
 
-pub fn update(self: *GameWindow) !void {
+pub fn update(self: *GameWindow, delta: f32) !void {
+    if (self.game == null)
+        return;
+
+    const game = self.game.?;
+
     if (rl.isMouseButtonPressed(.left)) {
         rl.disableCursor();
         self.focused = true;
@@ -89,8 +93,36 @@ pub fn update(self: *GameWindow) !void {
         self.wiremesh = !self.wiremesh;
     }
 
-    if (self.focused)
-        self.camera.update(.free);
+    if (rl.isKeyPressed(.tab)) {
+        self.freecam = !self.freecam;
+    }
+
+    if (self.focused) {
+        // Update camera
+        if (self.freecam) {
+            self.camera.update(.free);
+        } else {
+            // Take mouse movement in account
+            self.cam_rot = self.cam_rot.add(rl.getMouseDelta().scale(delta * 10.0));
+            // Clamp vertical rotation
+            if (self.cam_rot.y > 89.9)
+                self.cam_rot.y = 89.9;
+            if (self.cam_rot.y < -89.9)
+                self.cam_rot.y = -89.9;
+            // Modulo the horizontal rotation
+            while (self.cam_rot.x >= 360.0)
+                self.cam_rot.x -= 360.0;
+            while (self.cam_rot.x < 0)
+                self.cam_rot.x += 360.0;
+
+            const cam_rel_pos = rl.Vector3.init(0, 0, -1.0)
+                .rotateByAxisAngle(.{ .x = 1.0, .y = 0.0, .z = 0.0 }, std.math.degreesToRadians(-self.cam_rot.y))
+                .rotateByAxisAngle(.{ .x = 0.0, .y = 1.0, .z = 0.0 }, std.math.degreesToRadians(-self.cam_rot.x));
+
+            self.camera.position = vec.coordToRlVec(game.player.pos);
+            self.camera.target = self.camera.position.add(cam_rel_pos.scale(1.0));
+        }
+    }
 
     if (self.f3_enabled) {
         const pos = self.camera.position;
@@ -114,19 +146,34 @@ pub fn update(self: *GameWindow) !void {
     }
 }
 
+pub fn enterGame(self: *GameWindow, game: *engine.Game) void {
+    std.debug.print("Game started!\n", .{});
+    self.game = game;
+}
+
+pub fn exitGame(self: *GameWindow) void {
+    std.debug.print("Game stopped!\n", .{});
+    self.game = null;
+}
+
 pub fn beginDraw(_: GameWindow) void {
     rl.beginDrawing();
     defer rl.clearBackground(.white);
 }
 
-pub fn drawWorld(self: GameWindow, world: terrain.World, entity_manager: entities.EntityManager) void {
+pub fn drawWorld(self: GameWindow) void {
+    if (self.game == null)
+        return;
+
+    const game = self.game.?;
+
     self.camera.begin();
 
     // Draw world
     if (self.wiremesh)
         rl.gl.rlEnableWireMode();
 
-    var chunk_it = world.chunk_list.iterator();
+    var chunk_it = game.world.chunk_list.iterator();
     while (chunk_it.next()) |entry| {
         const chunk = entry.value_ptr.*;
         const chunk_pos = entry.key_ptr.*;
@@ -142,7 +189,7 @@ pub fn drawWorld(self: GameWindow, world: terrain.World, entity_manager: entitie
     }
 
     // Draw the transparent part of chunks
-    chunk_it = world.chunk_list.iterator();
+    chunk_it = game.world.chunk_list.iterator();
     while (chunk_it.next()) |entry| {
         if (entry.value_ptr.*.model) |model| {
             model.drawTransparentLayer(entry.key_ptr.*);
@@ -153,10 +200,10 @@ pub fn drawWorld(self: GameWindow, world: terrain.World, entity_manager: entitie
         rl.gl.rlDisableWireMode();
 
     // Draw ourself
-    rl.drawCube(self.player_position, 0.6, 1.8, 0.6, .dark_purple);
+    rl.drawCube(vec.coordToRlVec(game.player.pos), 0.6, 1.8, 0.6, .dark_purple);
 
     // Draw entities
-    var it = entity_manager.entities.iterator();
+    var it = game.entities.entities.iterator();
     while (it.next()) |entry| {
         const entity = entry.value_ptr.*;
         entity.draw();
@@ -174,6 +221,14 @@ pub fn drawWorld(self: GameWindow, world: terrain.World, entity_manager: entitie
 }
 
 pub fn drawGui(self: GameWindow) void {
+    if (self.game == null) {
+        rl.drawText("No game!", 10, 10, 20, .black);
+        return;
+    }
+
+    if (self.freecam)
+        rl.drawCircle(10, 10, 5, .red);
+
     if (self.f3_enabled)
         rl.drawText(self.f3_str, 10, 10, 20, .black);
 }
@@ -186,42 +241,4 @@ pub fn deinit(_: GameWindow) void {
     compass.unload();
     ChunkModel.deinitMesher();
     rl.closeWindow();
-}
-
-pub fn setPlayerMarker(self: *GameWindow, pos: coord.Vec3f) void {
-    self.player_position = .{ .x = @floatCast(pos.x), .y = @floatCast(pos.y), .z = @floatCast(pos.z) };
-    // Set camera for the first time
-    if (self.first_player_pos) {
-        self.first_player_pos = false;
-        self.camera.position = self.player_position;
-    }
-}
-
-/// Silly thing to get a random splash screen line from the original minecraft
-fn getSplashTitle(alloc: std.mem.Allocator) ![:0]const u8 {
-    var splashes_file = try std.fs.cwd().openFile("res/jar/minecraft/title/splashes.txt", .{});
-    defer splashes_file.close();
-
-    var reader = splashes_file.reader(&.{});
-    const lines = try reader.interface.allocRemaining(alloc, .unlimited);
-    defer alloc.free(lines);
-
-    const line_count = std.mem.count(u8, lines, "\n");
-
-    var rng = std.Random.DefaultPrng.init(@bitCast(std.time.timestamp()));
-    const random = rng.random();
-
-    const chosen_line = random.intRangeLessThan(usize, 0, line_count);
-    var i: usize = 0;
-
-    var line_it = std.mem.TokenIterator(u8, .scalar){ .buffer = lines, .delimiter = '\n', .index = 0 };
-    while (line_it.next()) |line| {
-        if (i == chosen_line) {
-            return alloc.dupeZ(u8, line[0 .. line.len - 1]);
-        }
-
-        i += 1;
-    }
-
-    unreachable;
 }

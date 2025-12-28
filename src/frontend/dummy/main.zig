@@ -17,5 +17,8 @@ pub fn main(default_alloc: std.mem.Allocator) !void {
     try client.init(alloc, &window, "localhost", 25565);
     defer client.deinit();
 
+    window.enterGame(&client.game);
+    defer window.exitGame();
+
     while (try client.update()) {}
 }

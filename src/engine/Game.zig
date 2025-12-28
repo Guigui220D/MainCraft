@@ -10,6 +10,8 @@ const World = @import("terrain").World;
 const Client = @import("Client.zig");
 const Game = @This();
 
+const Player = @import("Player.zig");
+
 /// Allocator
 alloc: std.mem.Allocator,
 
@@ -29,6 +31,8 @@ world: World,
 entities: Entities,
 /// Temporary
 last_plm: net.server_bound.Packet13PlayerLookMove,
+/// Player
+player: Player,
 
 /// Inits a game state
 pub fn init(alloc: std.mem.Allocator, client: *Client, window: *io.GameWindow) !Game {
@@ -93,7 +97,11 @@ pub fn handlePacket(self: *Game, packet: net.InboundPacket) !void {
         },
         .player_look_move_13 => |plm| {
             self.last_plm = plm;
-            self.window.setPlayerMarker(.{ .x = plm.x_position, .y = plm.y_position, .z = plm.z_position });
+            self.player.pos = .{
+                .x = plm.x_position,
+                .y = plm.y_position,
+                .z = plm.z_position,
+            };
         },
         .animation_18 => |anim| {
             self.entities.get(anim.entity_id).?.startAnimation(anim.animation);

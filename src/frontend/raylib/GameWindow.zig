@@ -42,7 +42,7 @@ pub fn init(alloc: std.mem.Allocator) !GameWindow {
         alloc.free(ti);
     }
 
-    rl.setTraceLogLevel(.warning);
+    //rl.setTraceLogLevel(.warning);
 
     try ChunkModel.initMesher();
     errdefer ChunkModel.deinitMesher();
@@ -159,38 +159,7 @@ pub fn drawWorld(self: GameWindow, world: terrain.World, entity_manager: entitie
     var it = entity_manager.entities.iterator();
     while (it.next()) |entry| {
         const entity = entry.value_ptr.*;
-        const pos = entity.pos;
-        var rl_pos: rl.Vector3 = .{ .x = @floatCast(pos.x), .y = @floatCast(pos.y), .z = @floatCast(pos.z) };
-        rl_pos = rl_pos.add(.{ .x = 0, .y = 0.5, .z = 0 });
-
-        // TODO: draw text on top of player's head
-        // TODO: make a EntityModel in the IO api, associated with the Entity class, to store entity state like animations
-        switch (entity.data) {
-            .item => rl.drawSphere(rl_pos, 0.4, .sky_blue),
-            .painting => {},
-            .arrow => rl.drawSphere(rl_pos, 0.1, .beige),
-            .snowball => rl.drawSphere(rl_pos, 0.4, .white),
-            .primed_tnt => rl.drawCube(rl_pos, 1.0, 1.0, 1.0, .red),
-            .falling_sand => rl.drawCube(rl_pos, 1.0, 1.0, 1.0, .yellow),
-            .minecart => rl.drawCube(rl_pos, 1.1, 0.75, 1.1, .gray),
-            .boat => rl.drawCube(rl_pos, 1.1, 0.75, 1.1, .brown),
-            .mob => {}, // Does that even exist??
-            .monster => {}, // Does that even exist??
-            .creeper => rl.drawSphere(rl_pos, 0.4, .green),
-            .skeleton => rl.drawSphere(rl_pos, 0.4, .gray),
-            .giant => rl.drawSphere(rl_pos, 1, .dark_green),
-            .zombie => rl.drawSphere(rl_pos, 0.4, .dark_green),
-            .slime => rl.drawCube(rl_pos, 1.0, 1.0, 1.0, .green),
-            .ghast => rl.drawCube(rl_pos, 1.5, 1.5, 1.5, .white),
-            .pig_zombie => rl.drawSphere(rl_pos, 0.4, .magenta),
-            .pig => rl.drawSphere(rl_pos, 0.4, .pink),
-            .sheep => rl.drawSphere(rl_pos, 0.4, .black),
-            .cow => rl.drawSphere(rl_pos, 0.4, .brown),
-            .chicken => rl.drawSphere(rl_pos, 0.4, .white),
-            .squid => rl.drawSphere(rl_pos, 0.4, .dark_blue),
-            .wolf => rl.drawSphere(rl_pos, 0.4, .red),
-            .player => rl.drawCube(rl_pos.add(.{ .x = 0, .y = 0.4, .z = 0 }), 0.6, 1.8, 0.6, .yellow),
-        }
+        entity.draw();
     }
 
     // Draw 3d debug info

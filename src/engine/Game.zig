@@ -95,6 +95,9 @@ pub fn handlePacket(self: *Game, packet: net.InboundPacket) !void {
             self.last_plm = plm;
             self.window.setPlayerMarker(.{ .x = plm.x_position, .y = plm.y_position, .z = plm.z_position });
         },
+        .animation_18 => |anim| {
+            self.entities.get(anim.entity_id).?.startAnimation(anim.animation);
+        },
         .named_entity_spawn_20 => |sp| {
             try self.entities.addOtherPlayer(
                 sp.entity_id,
@@ -129,20 +132,17 @@ pub fn handlePacket(self: *Game, packet: net.InboundPacket) !void {
         },
         .rel_entity_move_31 => |move| {
             // TODO: no need to crash when the entity is not found
-            try self.entities.moveEntity(
-                move.entity_id,
+            self.entities.get(move.entity_id).?.move(
                 .fromIntsDiv32(move.x_position, move.y_position, move.z_position),
             );
         },
         .rel_entity_move_look_33 => |move| {
-            try self.entities.moveEntity(
-                move.entity_id,
+            self.entities.get(move.entity_id).?.move(
                 .fromIntsDiv32(move.x_position, move.y_position, move.z_position),
             );
         },
         .entity_teleport_34 => |tp| {
-            try self.entities.setEntityPosition(
-                tp.entity_id,
+            self.entities.get(tp.entity_id).?.setPosition(
                 .fromIntsDiv32(tp.x_position, tp.y_position, tp.z_position),
             );
         },
@@ -161,7 +161,6 @@ pub fn handlePacket(self: *Game, packet: net.InboundPacket) !void {
             );
         },
         .block_change_53 => |bc| {
-            std.debug.print("Set Block\n", .{});
             try self.world.setBlockId(
                 .{ .x = bc.x_position, .y = bc.y_position, .z = bc.z_position },
                 bc.block_id,

@@ -31,7 +31,13 @@ pub fn addEntity(self: *EntityManager, id: i32, pos: coord.Vec3f, ent_type: Enti
     const new_ent = try self.alloc.create(Entity);
     errdefer self.alloc.destroy(new_ent);
 
-    new_ent.* = .{ .pos = pos, .data = .initData(ent_type) };
+    new_ent.* = .{
+        .id = id,
+        .pos = pos,
+        .data = .initData(ent_type),
+        .entity_model = try .initForEntity(self.alloc, new_ent),
+    };
+    errdefer new_ent.entity_model.deinit(self.alloc);
 
     if (self.entities.contains(id))
         return error.EntityAlreadyExists;
@@ -46,7 +52,13 @@ pub fn addOtherPlayer(self: *EntityManager, id: i32, pos: coord.Vec3f, name: []c
     errdefer self.alloc.destroy(new_ent);
 
     // TODO: own name (dupe it)
-    new_ent.* = .{ .pos = pos, .data = .{ .player = .{ .username = name } } };
+    new_ent.* = .{
+        .id = id,
+        .pos = pos,
+        .data = .{ .player = .{ .username = name } },
+        .entity_model = try .initForEntity(self.alloc, new_ent),
+    };
+    errdefer new_ent.entity_model.deinit(self.alloc);
 
     if (self.entities.contains(id))
         return error.EntityAlreadyExists;
@@ -67,18 +79,6 @@ pub fn removeEntity(self: *EntityManager, id: i32) !void {
     std.debug.print("Removed entity {}\n", .{id});
 }
 
-// Temporary: prototyping
-pub fn setEntityPosition(self: *EntityManager, id: i32, pos: coord.Vec3f) !void {
-    const entity = self.entities.get(id) orelse return error.EntityNotFound;
-    entity.pos = pos;
-}
-
-// Temporary: prototyping
-pub fn moveEntity(self: *EntityManager, id: i32, mov: coord.Vec3f) !void {
-    const entity = self.entities.get(id) orelse return error.EntityNotFound;
-    entity.pos = .{
-        .x = entity.pos.x + mov.x,
-        .y = entity.pos.y + mov.y,
-        .z = entity.pos.z + mov.z,
-    };
+pub fn get(self: *EntityManager, entity_id: i32) ?*Entity {
+    return self.entities.get(entity_id);
 }

@@ -111,6 +111,7 @@ pub fn build(b: *std.Build) void {
     io_mod.addImport("tracy", tracy_dep.module("tracy"));
     terrain_mod.addImport("io", io_mod);
     blocks_mod.addImport("io", io_mod);
+    entities_mod.addImport("io", io_mod);
 
     const net_mod = b.addModule("net", .{
         .root_source_file = b.path("src/net/net.zig"),

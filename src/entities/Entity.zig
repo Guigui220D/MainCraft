@@ -1,12 +1,37 @@
 //! Entity
 
 const std = @import("std");
+const io = @import("io");
 const coord = @import("coord");
+
+const Entity = @This();
 
 pub const Type = @import("entity_types.zig").EntityType;
 
+id: i32,
 pos: coord.Vec3f,
 data: Data,
+entity_model: io.EntityModel,
+
+// Temporary: prototyping
+pub fn setPosition(self: *Entity, pos: coord.Vec3f) void {
+    self.pos = pos;
+}
+
+// Temporary: prototyping
+pub fn move(self: *Entity, mov: coord.Vec3f) void {
+    self.pos.x += mov.x;
+    self.pos.y += mov.y;
+    self.pos.z += mov.z;
+}
+
+pub fn startAnimation(self: *Entity, animation: u8) void {
+    self.entity_model.startAnimation(animation);
+}
+
+pub fn draw(self: Entity) void {
+    self.entity_model.draw();
+}
 
 pub const Data = union(Type) {
     pub fn initData(entity_type: Type) Data {

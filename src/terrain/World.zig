@@ -90,8 +90,6 @@ pub fn setBlockId(self: *World, pos: coord.Block, block_id: u8) !void {
     const chunk = self.getChunk(chunk_pos) orelse return error.ChunkNotLoaded;
     const pos_in_chunk = pos.getPosInChunk();
 
-    std.debug.print(" on chunk {any} at {any}\n", .{ chunk_pos, pos_in_chunk });
-
     std.debug.assert(pos_in_chunk.isWithinChunk());
 
     chunk.setBlockId(pos_in_chunk, block_id);

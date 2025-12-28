@@ -29,8 +29,6 @@ last_tick: i64,
 world: World,
 /// Entities
 entities: Entities,
-/// Temporary
-last_plm: net.server_bound.Packet13PlayerLookMove,
 /// Player
 player: Player,
 
@@ -80,15 +78,8 @@ fn maybeTick(self: *Game) !bool {
 /// Run engine tick
 fn tick(self: *Game) !void {
     if (self.client.is_connected) {
-        // Temporary thing so server considers us alive (TODO: actual physics)
-        self.last_plm.y_position -= 0.1;
-        self.last_plm.y_center_position -= 0.1;
-        if (self.last_plm.y_center_position < self.last_plm.y_position) {
-            const swap = self.last_plm.y_center_position;
-            self.last_plm.y_center_position = self.last_plm.y_position;
-            self.last_plm.y_position = swap;
-        }
-        self.client.enqueuePacket(self.last_plm);
+        const position_packet = self.player.makePositionPacket();
+        self.client.enqueuePacket(position_packet);
     }
 }
 
@@ -104,12 +95,12 @@ pub fn handlePacket(self: *Game, packet: net.InboundPacket) !void {
             // TODO: handle time
         },
         .player_look_move_13 => |plm| {
-            self.last_plm = plm;
-            self.player.setPosition(.{
+            self.player.resetPosition(.{
                 .x = plm.x_position,
                 .y = plm.y_position,
                 .z = plm.z_position,
             });
+            self.player.resetHeadAngle(plm.yaw, plm.pitch);
         },
         .animation_18 => |anim| {
             self.entities.get(anim.entity_id).?.startAnimation(anim.animation);

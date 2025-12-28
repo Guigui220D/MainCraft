@@ -187,7 +187,9 @@ pub fn update(self: *Client, delta: f32) !bool {
 
 /// Adds a server-bound packet to the queue for sending
 pub fn enqueuePacket(self: *Client, packet: anytype) void {
-    if (!self.out_queue.tryPush(net.OutboundPacket.encapsulate(packet))) {
+    const pack = if (@TypeOf(packet) == net.OutboundPacket) packet else net.OutboundPacket.encapsulate(packet);
+
+    if (!self.out_queue.tryPush(pack)) {
         std.debug.print("Couldn't enqueue outbounds packet! Something is stuck...", .{});
         self.server_running.store(false, .release);
     }

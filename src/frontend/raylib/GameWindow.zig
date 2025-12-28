@@ -22,6 +22,7 @@ var compass: rl.Model = undefined;
 
 camera: rl.Camera,
 cam_rot: rl.Vector2,
+cam_rel_pos: rl.Vector3,
 cube_position: rl.Vector3,
 first_player_pos: bool = true,
 focused: bool = true,
@@ -59,6 +60,7 @@ pub fn init(_: std.mem.Allocator) !GameWindow {
         },
         .cube_position = .init(0, 0, 0),
         .cam_rot = .zero(),
+        .cam_rel_pos = .zero(),
     };
 }
 
@@ -77,23 +79,20 @@ pub fn update(self: *GameWindow, delta: f32) !void {
         self.focused = true;
     }
 
-    if (!self.focused)
-        return;
-
     if (rl.isKeyPressed(.escape) and self.focused) {
         rl.enableCursor();
         self.focused = false;
     }
 
-    if (rl.isKeyPressed(.f3)) {
+    if (rl.isKeyPressed(.f3) and self.focused) {
         self.f3_enabled = !self.f3_enabled;
     }
 
-    if (rl.isKeyPressed(.f4)) {
+    if (rl.isKeyPressed(.f4) and self.focused) {
         self.wiremesh = !self.wiremesh;
     }
 
-    if (rl.isKeyPressed(.tab)) {
+    if (rl.isKeyPressed(.tab) and self.focused) {
         self.freecam = !self.freecam;
     }
 
@@ -102,7 +101,7 @@ pub fn update(self: *GameWindow, delta: f32) !void {
             // Freecam mode
             self.camera.update(.free);
         } else {
-            // Update camera
+            // Look around code
             // Take mouse movement in account
             self.cam_rot = self.cam_rot.add(rl.getMouseDelta().scale(delta * 10.0));
             // Clamp vertical rotation
@@ -119,13 +118,9 @@ pub fn update(self: *GameWindow, delta: f32) !void {
             const pitch = std.math.degreesToRadians(-self.cam_rot.y);
             const yaw = std.math.degreesToRadians(-self.cam_rot.x);
 
-            const cam_rel_pos = rl.Vector3.init(0, 0, -1.0)
+            self.cam_rel_pos = rl.Vector3.init(0, 0, -1.0)
                 .rotateByAxisAngle(.{ .x = 1.0, .y = 0.0, .z = 0.0 }, pitch)
                 .rotateByAxisAngle(.{ .x = 0.0, .y = 1.0, .z = 0.0 }, yaw);
-
-            // TODO: give the player a cam pos function (for head bobbing and whatnot)
-            self.camera.position = vec.coordToRlVec(game.player.pos);
-            self.camera.target = self.camera.position.add(cam_rel_pos.scale(1.0));
 
             game.player.setHeadAngle(yaw, pitch);
 
@@ -143,6 +138,13 @@ pub fn update(self: *GameWindow, delta: f32) !void {
                 game.player.walkRight();
             }
         }
+    }
+
+    // Update camera position
+    if (!self.freecam) {
+        // TODO: give the player a cam pos function (for head bobbing and whatnot)
+        self.camera.position = vec.coordToRlVec(game.player.pos);
+        self.camera.target = self.camera.position.add(self.cam_rel_pos.scale(1.0));
     }
 
     if (self.f3_enabled) {

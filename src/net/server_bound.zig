@@ -9,6 +9,7 @@ pub const Packet1Login = @import("packets/Packet1Login.zig");
 pub const Packet2Handshake = @import("packets/Packet2Handshake.zig");
 pub const Packet10OnGround = @import("packets/Packet10OnGround.zig");
 pub const Packet11PlayerPosition = @import("packets/Packet11PlayerPosition.zig");
+pub const Packet12PlayerLook = @import("packets/Packet12PlayerLook.zig");
 pub const Packet13PlayerLookMove = @import("packets/Packet13PlayerLookMove.zig");
 
 pub const OutboundPacket = union(Packets) {
@@ -48,7 +49,7 @@ pub const OutboundPacket = union(Packets) {
     respawn_9: void,
     on_ground_10: Packet10OnGround,
     player_position_11: Packet11PlayerPosition,
-    player_look_12: void,
+    player_look_12: Packet12PlayerLook,
     player_look_move_13: Packet13PlayerLookMove,
     block_dig_14: void,
     place_15: void,

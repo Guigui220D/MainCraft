@@ -18,7 +18,10 @@ world: *World,
 coords: coord.Chunk,
 blocks_data: []u8,
 model: ?io.ChunkModel,
-model_dirty: bool,
+/// ~~Flag~~ Value indicating if the model is up to date or not
+/// Used to be a boolean, is now a value: 0 means not dirty, anything else means dirty
+/// With the lowest value being the highest priority
+model_dirty: u64,
 
 pub fn initEmpty(world: *World, alloc: std.mem.Allocator, coords: coord.Chunk) !*Chunk {
     // Unimplemented
@@ -30,7 +33,7 @@ pub fn initEmpty(world: *World, alloc: std.mem.Allocator, coords: coord.Chunk) !
         .coords = coords,
         .blocks_data = try alloc.alloc(u8, block_data_len),
         .model = null,
-        .model_dirty = false,
+        .model_dirty = 0,
     };
 
     // Fill with zeros
@@ -77,9 +80,9 @@ pub fn destroyChunk(self: *Chunk, alloc: std.mem.Allocator) void {
 }
 
 /// Sets the flag that the model must be updated
-pub inline fn markDirty(self: *Chunk) void {
-    // TODO: priority system?
-    self.model_dirty = true;
+pub inline fn markDirtiness(self: *Chunk, counter: *usize) void {
+    self.model_dirty = counter.*;
+    counter.* +|= 1;
 }
 
 pub fn updateModel(self: *Chunk, alloc: std.mem.Allocator) !void {
@@ -95,7 +98,7 @@ pub fn updateModel(self: *Chunk, alloc: std.mem.Allocator) !void {
     defer zone.end();
 
     self.model = try io.ChunkModel.generateForChunk(alloc, self.*);
-    self.model_dirty = false;
+    self.model_dirty = 0;
 }
 
 pub fn deinit(self: Chunk, alloc: std.mem.Allocator) void {

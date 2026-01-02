@@ -12,11 +12,13 @@ const ChunkList = std.AutoHashMap(coord.Chunk, *Chunk);
 
 alloc: std.mem.Allocator,
 chunk_list: ChunkList,
+dirty_priority_counter: u64,
 
 pub fn init(alloc: std.mem.Allocator) !World {
     return .{
         .alloc = alloc,
         .chunk_list = .init(alloc),
+        .dirty_priority_counter = 1,
     };
 }
 
@@ -82,24 +84,24 @@ pub fn doChunkMap(self: *World, x: i32, y: i16, z: i32, size_x: u8, size_y: u8, 
             remaining = chunk.setChunkData(remaining, x1, y1, z1, x2, y2, z2);
 
             // Update own model
-            chunk.markDirty();
+            chunk.markDirtiness(&self.dirty_priority_counter);
             // Update neighbors if needed
             if (x1 <= 0) {
                 if (self.getChunk(.{ .x = chunk_x - 1, .z = chunk_z })) |neighbor|
-                    neighbor.markDirty();
+                    neighbor.markDirtiness(&self.dirty_priority_counter);
             }
             if (x2 >= 15) {
                 if (self.getChunk(.{ .x = chunk_x + 1, .z = chunk_z })) |neighbor|
-                    neighbor.markDirty();
+                    neighbor.markDirtiness(&self.dirty_priority_counter);
             }
 
             if (z1 <= 0) {
                 if (self.getChunk(.{ .x = chunk_x, .z = chunk_z - 1 })) |neighbor|
-                    neighbor.markDirty();
+                    neighbor.markDirtiness(&self.dirty_priority_counter);
             }
             if (z2 >= 15) {
                 if (self.getChunk(.{ .x = chunk_x, .z = chunk_z + 1 })) |neighbor|
-                    neighbor.markDirty();
+                    neighbor.markDirtiness(&self.dirty_priority_counter);
             }
         }
     }
@@ -115,22 +117,22 @@ pub fn setBlockId(self: *World, pos: coord.Block, block_id: u8) !void {
     chunk.setBlockId(pos_in_chunk, block_id);
 
     // Update own model
-    chunk.markDirty();
+    chunk.markDirtiness(&self.dirty_priority_counter);
     // Update neighbors if needed
     if (pos.x == 0) {
         if (self.getChunk(.{ .x = chunk_pos.x - 1, .z = chunk_pos.z })) |neighbor|
-            neighbor.markDirty();
+            neighbor.markDirtiness(&self.dirty_priority_counter);
     } else if (pos.x == 15) {
         if (self.getChunk(.{ .x = chunk_pos.x + 1, .z = chunk_pos.z })) |neighbor|
-            neighbor.markDirty();
+            neighbor.markDirtiness(&self.dirty_priority_counter);
     }
 
     if (pos.z == 0) {
         if (self.getChunk(.{ .x = chunk_pos.x, .z = chunk_pos.z - 1 })) |neighbor|
-            neighbor.markDirty();
+            neighbor.markDirtiness(&self.dirty_priority_counter);
     } else if (pos.z == 15) {
         if (self.getChunk(.{ .x = chunk_pos.x, .z = chunk_pos.z + 1 })) |neighbor|
-            neighbor.markDirty();
+            neighbor.markDirtiness(&self.dirty_priority_counter);
     }
 }
 
@@ -138,14 +140,27 @@ pub fn setBlockId(self: *World, pos: coord.Block, block_id: u8) !void {
 /// Returns true if a model was updated
 pub fn updateModel(self: *World) !bool {
     var it = self.chunk_list.iterator();
+    var to_update: ?*Chunk = null;
+    var dirtiest: u64 = 0;
+
+    // TODO: does it make sense to not search through whole array? like how long is iterating
+    // priority is only a heuristic, it doesn't matter *that* much
+    // Find dirty chunk with highest priority
     while (it.next()) |entry| {
         const chunk = entry.value_ptr.*;
-        if (chunk.model_dirty) {
-            try chunk.updateModel(self.alloc);
-            return true;
+        // This intentionally doesn't include chunks whose dirtiness is 0
+        if (chunk.model_dirty > dirtiest) {
+            to_update = chunk;
+            dirtiest = chunk.model_dirty;
         }
     }
-    return false;
+
+    if (to_update) |chunk_to_update| {
+        try chunk_to_update.updateModel(self.alloc);
+        return true;
+    } else {
+        return false;
+    }
 }
 
 /// Adds an empty chunk in the position(assumes it doesn't exist)

@@ -69,4 +69,16 @@ pub const Vec3f = struct {
             .z = @as(f64, @floatFromInt(z)) / 32.0,
         };
     }
+
+    /// Gets the block that vec3f is in
+    pub inline fn getBlock(pos: Vec3f) Block {
+        var block: Block = .{ .x = @intFromFloat(pos.x), .y = @intFromFloat(pos.y), .z = @intFromFloat(pos.z) };
+        if (pos.x < 0)
+            block.x -= 1;
+        if (pos.y < 0)
+            block.y -= 1;
+        if (pos.z < 0)
+            block.z -= 1;
+        return block;
+    }
 };

@@ -3,11 +3,13 @@ pub const Chunk = struct {
     z: i32 = 0,
 };
 
+// TODO: separate types for local and global coordinates?
 pub const Block = struct {
     x: i32 = 0,
     y: i32 = 0,
     z: i32 = 0,
 
+    /// Get the chunk coordinates from the global block coordinates
     pub inline fn getChunk(self: Block) Chunk {
         return .{
             .x = @divFloor(self.x, 16),
@@ -15,6 +17,7 @@ pub const Block = struct {
         };
     }
 
+    /// Get the local coordinates within the chunk from the global block coordinates
     pub inline fn getPosInChunk(self: Block) Block {
         return .{
             .x = @mod(self.x, 16),
@@ -23,12 +26,18 @@ pub const Block = struct {
         };
     }
 
+    /// If this coordinates as local coords is within chunk boundaries
     pub inline fn isWithinChunk(self: Block) bool {
         if (self.x < 0 or self.y < 0 or self.z < 0)
             return false;
         if (self.x >= 16 or self.y >= 128 or self.z >= 16)
             return false;
         return true;
+    }
+
+    /// Check if a local block coordinate is at the border of a chunk
+    pub inline fn isAtChunkBorder(self: Block) bool {
+        return (self.x == 0 or self.z == 0 or self.x == 15 or self.z == 15);
     }
 
     pub inline fn north(self: Block) Block {

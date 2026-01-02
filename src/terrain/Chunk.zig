@@ -74,7 +74,7 @@ pub fn destroyChunk(self: *Chunk, alloc: std.mem.Allocator) void {
     alloc.destroy(self);
 }
 
-pub fn updateModel(self: *Chunk, alloc: std.mem.Allocator, comptime update_neighbors: bool) !void {
+pub fn updateModel(self: *Chunk, alloc: std.mem.Allocator) !void {
     // TODO: only update one model per frame/tick to avoid spike lags
     if (self.model) |old_model|
         old_model.deinit(alloc);
@@ -87,22 +87,6 @@ pub fn updateModel(self: *Chunk, alloc: std.mem.Allocator, comptime update_neigh
     defer zone.end();
 
     self.model = try io.ChunkModel.generateForChunk(alloc, self.*);
-
-    if (update_neighbors) {
-        // Update 4 neighbor chunks
-        // North
-        if (self.world.getChunk(.{ .x = self.coords.x, .z = self.coords.z - 1 })) |neighbor|
-            try neighbor.updateModel(alloc, false);
-        // East
-        if (self.world.getChunk(.{ .x = self.coords.x + 1, .z = self.coords.z })) |neighbor|
-            try neighbor.updateModel(alloc, false);
-        // South
-        if (self.world.getChunk(.{ .x = self.coords.x, .z = self.coords.z + 1 })) |neighbor|
-            try neighbor.updateModel(alloc, false);
-        // West
-        if (self.world.getChunk(.{ .x = self.coords.x - 1, .z = self.coords.z })) |neighbor|
-            try neighbor.updateModel(alloc, false);
-    }
 }
 
 pub fn deinit(self: Chunk, alloc: std.mem.Allocator) void {

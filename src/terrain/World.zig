@@ -81,7 +81,8 @@ pub fn doChunkMap(self: *World, x: i32, y: i16, z: i32, size_x: u8, size_y: u8, 
             const chunk = self.getChunk(coords).?;
             remaining = chunk.setChunkData(remaining, x1, y1, z1, x2, y2, z2);
             // TODO: mark model dirty to avoid redundant model re-generations due to neighbor updates
-            try chunk.updateModel(self.alloc, true);
+            // TODO: update neighbor chunk models if a border block is updated
+            try chunk.updateModel(self.alloc);
         }
     }
 }
@@ -94,7 +95,25 @@ pub fn setBlockId(self: *World, pos: coord.Block, block_id: u8) !void {
     std.debug.assert(pos_in_chunk.isWithinChunk());
 
     chunk.setBlockId(pos_in_chunk, block_id);
-    try chunk.updateModel(self.alloc, true);
+
+    // Update own model
+    try chunk.updateModel(self.alloc);
+    // Update neighbors if needed
+    if (pos.x == 0) {
+        if (self.getChunk(.{ .x = chunk_pos.x - 1, .z = chunk_pos.z })) |neighbor|
+            try neighbor.updateModel(self.alloc);
+    } else if (pos.x == 15) {
+        if (self.getChunk(.{ .x = chunk_pos.x + 1, .z = chunk_pos.z })) |neighbor|
+            try neighbor.updateModel(self.alloc);
+    }
+
+    if (pos.z == 0) {
+        if (self.getChunk(.{ .x = chunk_pos.x, .z = chunk_pos.z - 1 })) |neighbor|
+            try neighbor.updateModel(self.alloc);
+    } else if (pos.z == 15) {
+        if (self.getChunk(.{ .x = chunk_pos.x, .z = chunk_pos.z + 1 })) |neighbor|
+            try neighbor.updateModel(self.alloc);
+    }
 }
 
 /// Adds an empty chunk in the position(assumes it doesn't exist)

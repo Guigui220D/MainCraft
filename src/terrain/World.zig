@@ -80,7 +80,8 @@ pub fn doChunkMap(self: *World, x: i32, y: i16, z: i32, size_x: u8, size_y: u8, 
             // Apply modifications to selected chunk
             const chunk = self.getChunk(coords).?;
             remaining = chunk.setChunkData(remaining, x1, y1, z1, x2, y2, z2);
-            try chunk.updateModel(self.alloc);
+            // TODO: mark model dirty to avoid redundant model re-generations due to neighbor updates
+            try chunk.updateModel(self.alloc, true);
         }
     }
 }
@@ -93,12 +94,12 @@ pub fn setBlockId(self: *World, pos: coord.Block, block_id: u8) !void {
     std.debug.assert(pos_in_chunk.isWithinChunk());
 
     chunk.setBlockId(pos_in_chunk, block_id);
-    try chunk.updateModel(self.alloc);
+    try chunk.updateModel(self.alloc, true);
 }
 
 /// Adds an empty chunk in the position(assumes it doesn't exist)
 fn addChunk(self: *World, coords: coord.Chunk) !void {
-    const new_chunk = try Chunk.initEmpty(self.alloc, coords);
+    const new_chunk = try Chunk.initEmpty(self, self.alloc, coords);
     errdefer new_chunk.destroyChunk(self.alloc);
     try self.chunk_list.put(coords, new_chunk);
 }

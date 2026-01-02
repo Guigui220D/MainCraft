@@ -6,6 +6,7 @@ const io = @import("io");
 const blocks = @import("blocks");
 const tracy = @import("tracy");
 
+const World = @import("World.zig");
 const Chunk = @This();
 
 pub const width = 16;
@@ -13,16 +14,18 @@ pub const height = 128;
 
 pub const block_data_len = (height * width * width);
 
+world: *World,
 coords: coord.Chunk,
 blocks_data: []u8,
 model: ?io.ChunkModel,
 
-pub fn initEmpty(alloc: std.mem.Allocator, coords: coord.Chunk) !*Chunk {
+pub fn initEmpty(world: *World, alloc: std.mem.Allocator, coords: coord.Chunk) !*Chunk {
     // Unimplemented
     const ret = try alloc.create(Chunk);
     errdefer alloc.destroy(ret);
 
     ret.* = .{
+        .world = world,
         .coords = coords,
         .blocks_data = try alloc.alloc(u8, block_data_len),
         .model = null,
@@ -71,7 +74,8 @@ pub fn destroyChunk(self: *Chunk, alloc: std.mem.Allocator) void {
     alloc.destroy(self);
 }
 
-pub fn updateModel(self: *Chunk, alloc: std.mem.Allocator) !void {
+pub fn updateModel(self: *Chunk, alloc: std.mem.Allocator, comptime update_neighbors: bool) !void {
+    // TODO: only update one model per frame/tick to avoid spike lags
     if (self.model) |old_model|
         old_model.deinit(alloc);
 
@@ -83,12 +87,30 @@ pub fn updateModel(self: *Chunk, alloc: std.mem.Allocator) !void {
     defer zone.end();
 
     self.model = try io.ChunkModel.generateForChunk(alloc, self.*);
+
+    if (update_neighbors) {
+        // Update 4 neighbor chunks
+        // North
+        if (self.world.getChunk(.{ .x = self.coords.x, .z = self.coords.z - 1 })) |neighbor|
+            try neighbor.updateModel(alloc, false);
+        // East
+        if (self.world.getChunk(.{ .x = self.coords.x + 1, .z = self.coords.z })) |neighbor|
+            try neighbor.updateModel(alloc, false);
+        // South
+        if (self.world.getChunk(.{ .x = self.coords.x, .z = self.coords.z + 1 })) |neighbor|
+            try neighbor.updateModel(alloc, false);
+        // West
+        if (self.world.getChunk(.{ .x = self.coords.x - 1, .z = self.coords.z })) |neighbor|
+            try neighbor.updateModel(alloc, false);
+    }
 }
 
 pub fn deinit(self: Chunk, alloc: std.mem.Allocator) void {
     alloc.free(self.blocks_data);
 }
 
+/// Get block id or 0 if the local coordinates are outside of the chunk
+/// The position is within the chunk, not global coordinates
 pub fn getBlockId(self: Chunk, pos: coord.Block) u8 {
     const zone = tracy.Zone.begin(.{
         .name = "Get block",
@@ -101,6 +123,39 @@ pub fn getBlockId(self: Chunk, pos: coord.Block) u8 {
         return 0;
     const index = indexFromCoord(pos);
     return self.blocks_data[index];
+}
+
+/// Get block id within the chunk, or from a neighbor chunk, transcending chunk boundaries
+/// If the coordinates are for a neighbor that isn't loaded, this returns 0
+/// The position is in the chunk's coordiante space within, not global coordinates
+pub fn getBlockIdTranscend(self: Chunk, pos: coord.Block) u8 {
+    const zone = tracy.Zone.begin(.{
+        .name = "Get block transcend",
+        .src = @src(),
+        .color = .pink1,
+    });
+    defer zone.end();
+
+    if (pos.isWithinChunk()) {
+        // Local block
+        const index = indexFromCoord(pos);
+        return self.blocks_data[index];
+    } else {
+        // Neighbor block
+        // Relative chunk position
+        const chunk_rel = pos.getChunk();
+        // TODO: vector math helpers for concise code
+        var other_chunk_pos = self.coords;
+        other_chunk_pos.x += chunk_rel.x;
+        other_chunk_pos.z += chunk_rel.z;
+
+        if (self.world.getChunk(other_chunk_pos)) |other_chunk| {
+            return other_chunk.getBlockId(pos.getPosInChunk());
+        } else {
+            // Neigbor not loaded
+            return 0;
+        }
+    }
 }
 
 pub fn setBlockId(self: *Chunk, pos: coord.Block, block_id: u8) void {
@@ -118,12 +173,12 @@ pub fn getContext(self: Chunk, pos: coord.Block) blocks.Context {
     });
     defer zone.end();
 
-    const block_n = blocks.table[getBlockId(self, pos.north())];
-    const block_e = blocks.table[getBlockId(self, pos.east())];
-    const block_s = blocks.table[getBlockId(self, pos.south())];
-    const block_w = blocks.table[getBlockId(self, pos.west())];
-    const block_u = blocks.table[getBlockId(self, pos.up())];
-    const block_d = blocks.table[getBlockId(self, pos.down())];
+    const block_n = blocks.table[getBlockIdTranscend(self, pos.north())];
+    const block_e = blocks.table[getBlockIdTranscend(self, pos.east())];
+    const block_s = blocks.table[getBlockIdTranscend(self, pos.south())];
+    const block_w = blocks.table[getBlockIdTranscend(self, pos.west())];
+    const block_u = blocks.table[getBlockIdTranscend(self, pos.up())];
+    const block_d = blocks.table[getBlockIdTranscend(self, pos.down())];
 
     return .{
         .north = !block_n.full_block or block_n.transparent,

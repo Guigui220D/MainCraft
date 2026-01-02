@@ -80,9 +80,29 @@ pub fn doChunkMap(self: *World, x: i32, y: i16, z: i32, size_x: u8, size_y: u8, 
             // Apply modifications to selected chunk
             const chunk = self.getChunk(coords).?;
             remaining = chunk.setChunkData(remaining, x1, y1, z1, x2, y2, z2);
+
             // TODO: mark model dirty to avoid redundant model re-generations due to neighbor updates
-            // TODO: update neighbor chunk models if a border block is updated
+
+            // Update own model
             try chunk.updateModel(self.alloc);
+            // Update neighbors if needed
+            if (x1 <= 0) {
+                if (self.getChunk(.{ .x = chunk_x - 1, .z = chunk_z })) |neighbor|
+                    try neighbor.updateModel(self.alloc);
+            }
+            if (x2 >= 15) {
+                if (self.getChunk(.{ .x = chunk_x + 1, .z = chunk_z })) |neighbor|
+                    try neighbor.updateModel(self.alloc);
+            }
+
+            if (z1 <= 0) {
+                if (self.getChunk(.{ .x = chunk_x, .z = chunk_z - 1 })) |neighbor|
+                    try neighbor.updateModel(self.alloc);
+            }
+            if (z2 >= 15) {
+                if (self.getChunk(.{ .x = chunk_x, .z = chunk_z + 1 })) |neighbor|
+                    try neighbor.updateModel(self.alloc);
+            }
         }
     }
 }

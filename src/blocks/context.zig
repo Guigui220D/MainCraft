@@ -1,5 +1,7 @@
 //! Context data passed when generating block models
 
+// TODO: expand context concept to other relevant things like fences, water?
+
 /// Bitfield indicating which edge faces of a block should be rendered
 pub const Context = packed struct {
     /// North (-Z) faces should be rendered

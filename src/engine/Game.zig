@@ -67,6 +67,9 @@ pub fn maybeTick(self: *Game) !bool {
 }
 /// Run engine tick
 fn tick(self: *Game) !void {
+    // Update chunk models (TODO: do that more than once per tick, maybe once or more per frame)
+    _ = try self.world.updateModel();
+
     if (self.client.is_connected) {
         // Temporary thing so server considers us alive (TODO: actual physics)
         self.last_plm.y_position -= 0.1;

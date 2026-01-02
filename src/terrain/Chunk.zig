@@ -18,6 +18,7 @@ world: *World,
 coords: coord.Chunk,
 blocks_data: []u8,
 model: ?io.ChunkModel,
+model_dirty: bool,
 
 pub fn initEmpty(world: *World, alloc: std.mem.Allocator, coords: coord.Chunk) !*Chunk {
     // Unimplemented
@@ -29,6 +30,7 @@ pub fn initEmpty(world: *World, alloc: std.mem.Allocator, coords: coord.Chunk) !
         .coords = coords,
         .blocks_data = try alloc.alloc(u8, block_data_len),
         .model = null,
+        .model_dirty = false,
     };
 
     // Fill with zeros
@@ -74,6 +76,12 @@ pub fn destroyChunk(self: *Chunk, alloc: std.mem.Allocator) void {
     alloc.destroy(self);
 }
 
+/// Sets the flag that the model must be updated
+pub inline fn markDirty(self: *Chunk) void {
+    // TODO: priority system?
+    self.model_dirty = true;
+}
+
 pub fn updateModel(self: *Chunk, alloc: std.mem.Allocator) !void {
     // TODO: only update one model per frame/tick to avoid spike lags
     if (self.model) |old_model|
@@ -87,6 +95,7 @@ pub fn updateModel(self: *Chunk, alloc: std.mem.Allocator) !void {
     defer zone.end();
 
     self.model = try io.ChunkModel.generateForChunk(alloc, self.*);
+    self.model_dirty = false;
 }
 
 pub fn deinit(self: Chunk, alloc: std.mem.Allocator) void {

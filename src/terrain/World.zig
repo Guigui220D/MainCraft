@@ -81,27 +81,25 @@ pub fn doChunkMap(self: *World, x: i32, y: i16, z: i32, size_x: u8, size_y: u8, 
             const chunk = self.getChunk(coords).?;
             remaining = chunk.setChunkData(remaining, x1, y1, z1, x2, y2, z2);
 
-            // TODO: mark model dirty to avoid redundant model re-generations due to neighbor updates
-
             // Update own model
-            try chunk.updateModel(self.alloc);
+            chunk.markDirty();
             // Update neighbors if needed
             if (x1 <= 0) {
                 if (self.getChunk(.{ .x = chunk_x - 1, .z = chunk_z })) |neighbor|
-                    try neighbor.updateModel(self.alloc);
+                    neighbor.markDirty();
             }
             if (x2 >= 15) {
                 if (self.getChunk(.{ .x = chunk_x + 1, .z = chunk_z })) |neighbor|
-                    try neighbor.updateModel(self.alloc);
+                    neighbor.markDirty();
             }
 
             if (z1 <= 0) {
                 if (self.getChunk(.{ .x = chunk_x, .z = chunk_z - 1 })) |neighbor|
-                    try neighbor.updateModel(self.alloc);
+                    neighbor.markDirty();
             }
             if (z2 >= 15) {
                 if (self.getChunk(.{ .x = chunk_x, .z = chunk_z + 1 })) |neighbor|
-                    try neighbor.updateModel(self.alloc);
+                    neighbor.markDirty();
             }
         }
     }
@@ -117,23 +115,37 @@ pub fn setBlockId(self: *World, pos: coord.Block, block_id: u8) !void {
     chunk.setBlockId(pos_in_chunk, block_id);
 
     // Update own model
-    try chunk.updateModel(self.alloc);
+    chunk.markDirty();
     // Update neighbors if needed
     if (pos.x == 0) {
         if (self.getChunk(.{ .x = chunk_pos.x - 1, .z = chunk_pos.z })) |neighbor|
-            try neighbor.updateModel(self.alloc);
+            neighbor.markDirty();
     } else if (pos.x == 15) {
         if (self.getChunk(.{ .x = chunk_pos.x + 1, .z = chunk_pos.z })) |neighbor|
-            try neighbor.updateModel(self.alloc);
+            neighbor.markDirty();
     }
 
     if (pos.z == 0) {
         if (self.getChunk(.{ .x = chunk_pos.x, .z = chunk_pos.z - 1 })) |neighbor|
-            try neighbor.updateModel(self.alloc);
+            neighbor.markDirty();
     } else if (pos.z == 15) {
         if (self.getChunk(.{ .x = chunk_pos.x, .z = chunk_pos.z + 1 })) |neighbor|
-            try neighbor.updateModel(self.alloc);
+            neighbor.markDirty();
     }
+}
+
+/// Updates a single chunk's model if it is marked as dirty
+/// Returns true if a model was updated
+pub fn updateModel(self: *World) !bool {
+    var it = self.chunk_list.iterator();
+    while (it.next()) |entry| {
+        const chunk = entry.value_ptr.*;
+        if (chunk.model_dirty) {
+            try chunk.updateModel(self.alloc);
+            return true;
+        }
+    }
+    return false;
 }
 
 /// Adds an empty chunk in the position(assumes it doesn't exist)

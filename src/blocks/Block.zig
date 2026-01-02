@@ -13,6 +13,11 @@ east_tex_id: u8 = no_tex,
 south_tex_id: u8 = no_tex,
 west_tex_id: u8 = no_tex,
 name: []const u8 = "",
+// Texture has transparent parts
+transparent: bool = false,
+// Hides blocks
 full_block: bool = true,
+// Model used
 block_model: BlockModel = .full,
+// UV mapping method
 uv_type: UvType = .basic,

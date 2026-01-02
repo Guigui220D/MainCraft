@@ -118,13 +118,20 @@ pub fn getContext(self: Chunk, pos: coord.Block) blocks.Context {
     });
     defer zone.end();
 
+    const block_n = blocks.table[getBlockId(self, pos.north())];
+    const block_e = blocks.table[getBlockId(self, pos.east())];
+    const block_s = blocks.table[getBlockId(self, pos.south())];
+    const block_w = blocks.table[getBlockId(self, pos.west())];
+    const block_u = blocks.table[getBlockId(self, pos.up())];
+    const block_d = blocks.table[getBlockId(self, pos.down())];
+
     return .{
-        .north = !blocks.table[getBlockId(self, pos.north())].full_block,
-        .east = !blocks.table[getBlockId(self, pos.east())].full_block,
-        .south = !blocks.table[getBlockId(self, pos.south())].full_block,
-        .west = !blocks.table[getBlockId(self, pos.west())].full_block,
-        .up = !blocks.table[getBlockId(self, pos.up())].full_block,
-        .down = !blocks.table[getBlockId(self, pos.down())].full_block,
+        .north = !block_n.full_block or block_n.transparent,
+        .east = !block_e.full_block or block_e.transparent,
+        .south = !block_s.full_block or block_s.transparent,
+        .west = !block_w.full_block or block_w.transparent,
+        .up = !block_u.full_block or block_u.transparent,
+        .down = !block_d.full_block or block_d.transparent,
     };
 }
 

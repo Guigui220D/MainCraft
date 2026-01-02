@@ -14,7 +14,7 @@ pub const BlockModel = enum {
     full,
     slab,
     plant,
-
+    liquid_still,
     // and others...
 };
 
@@ -29,6 +29,7 @@ pub inline fn faceCount(model: BlockModel, context: Context) usize {
         .full => context.faceCount(),
         .slab => slabFaceCount(context),
         .plant => plant_face_count,
+        .liquid_still => liquid_still_face_count,
     };
 }
 
@@ -41,9 +42,9 @@ pub inline fn writeVertices(arraylist: *std.ArrayList(f32), model: BlockModel, c
     const z = coords.z;
     switch (model) {
         .full => writeCubeVertices(arraylist, x, y, z, context),
-        //.slab => writeSlabVertices(writer, x, y, z, context),
-        .slab => unreachable,
+        .slab => writeSlabVertices(arraylist, x, y, z, context),
         .plant => writePlantVertices(arraylist, x, y, z),
+        .liquid_still => writeLiquidStillVertices(arraylist, x, y, z),
     }
 }
 
@@ -125,6 +126,57 @@ fn writeCubeVertices(arraylist: *std.ArrayList(f32), x: i32, y: i32, z: i32, con
         });
 }
 
+fn writeSlabVertices(arraylist: *std.ArrayList(f32), x: i32, y: i32, z: i32, context: Context) void {
+    const x1: f32 = @floatFromInt(x + 0);
+    const x2: f32 = @floatFromInt(x + 1);
+    const y1: f32 = @floatFromInt(y + 0);
+    const y2: f32 = @as(f32, @floatFromInt(y)) + 0.5;
+    const z1: f32 = @floatFromInt(z + 0);
+    const z2: f32 = @floatFromInt(z + 1);
+    if (context.north)
+        arraylist.appendSliceAssumeCapacity(&.{
+            x1, y1, z1,
+            x2, y1, z1,
+            x2, y2, z1,
+            x1, y2, z1,
+        });
+    if (context.east)
+        arraylist.appendSliceAssumeCapacity(&.{
+            x2, y1, z1,
+            x2, y1, z2,
+            x2, y2, z2,
+            x2, y2, z1,
+        });
+    if (context.south)
+        arraylist.appendSliceAssumeCapacity(&.{
+            x2, y1, z2,
+            x1, y1, z2,
+            x1, y2, z2,
+            x2, y2, z2,
+        });
+    if (context.west)
+        arraylist.appendSliceAssumeCapacity(&.{
+            x1, y1, z2,
+            x1, y1, z1,
+            x1, y2, z1,
+            x1, y2, z2,
+        });
+    // if (context.up)
+    arraylist.appendSliceAssumeCapacity(&.{
+        x2, y2, z2,
+        x1, y2, z2,
+        x1, y2, z1,
+        x2, y2, z1,
+    });
+    if (context.down)
+        arraylist.appendSliceAssumeCapacity(&.{
+            x1, y1, z2,
+            x2, y1, z2,
+            x2, y1, z1,
+            x1, y1, z1,
+        });
+}
+
 fn writePlantVertices(arraylist: *std.ArrayList(f32), x: i32, y: i32, z: i32) void {
     const x1: f32 = @as(f32, @floatFromInt(x)) + 1.0 - 0.853;
     const x2: f32 = @as(f32, @floatFromInt(x)) + 0.853;
@@ -157,6 +209,22 @@ fn writePlantVertices(arraylist: *std.ArrayList(f32), x: i32, y: i32, z: i32) vo
     });
 }
 
+fn writeLiquidStillVertices(arraylist: *std.ArrayList(f32), x: i32, y: i32, z: i32) void {
+    const x1: f32 = @floatFromInt(x + 0);
+    const x2: f32 = @floatFromInt(x + 1);
+    const y1: f32 = @as(f32, @floatFromInt(y)) + (14.2 / 16.0);
+    const z1: f32 = @floatFromInt(z + 0);
+    const z2: f32 = @floatFromInt(z + 1);
+
+    arraylist.appendSliceAssumeCapacity(&.{
+        // Water surface face
+        x1, y1, z1,
+        x2, y1, z1,
+        x2, y1, z2,
+        x1, y1, z2,
+    });
+}
+
 fn slabFaceCount(context: Context) usize {
     // Top face always renders
     var ret: usize = 1;
@@ -174,3 +242,5 @@ fn slabFaceCount(context: Context) usize {
 }
 
 const plant_face_count = 4;
+
+const liquid_still_face_count = 1;

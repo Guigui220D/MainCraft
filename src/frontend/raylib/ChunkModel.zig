@@ -188,7 +188,7 @@ fn generateSingleMesh(alloc: std.mem.Allocator, chunk: Chunk, offset: *usize, tr
         defer block_zone.end();
 
         const block = blocks.table[block_id];
-        if (block.full_block == transparent)
+        if (block.transparent != transparent)
             continue;
 
         // Block coordinates

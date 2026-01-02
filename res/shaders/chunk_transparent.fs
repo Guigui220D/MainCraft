@@ -19,7 +19,7 @@ void main()
     vec4 color = texelColor * colDiffuse * fragColor;
 
     // Discard fully transparent fragments
-    if (color.a < 0.6)
+    if (color.a == 0)
         discard;
 
     finalColor = color;

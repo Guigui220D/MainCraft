@@ -32,11 +32,37 @@ pub fn getTerrainUV(texture_id: u8, comptime reversed: bool) [8]f32 {
     }
 }
 
+/// Gets the slab texture coordinates for an ID of the terrain.png atlas
+pub fn getSlabUV(texture_id: u8, comptime reversed: bool) [8]f32 {
+    const tx: f32 = @as(f32, @floatFromInt(texture_id % atlas_size));
+    const ty: f32 = @as(f32, @floatFromInt(texture_id / atlas_size));
+    const divide: f32 = if (io.properties.normalized_uvs) atlas_size else 1;
+
+    if (reversed) {
+        return [8]f32{
+            (0.0 + tx) / divide, (0.5 + ty) / divide,
+            (1.0 + tx) / divide, (0.5 + ty) / divide,
+            (1.0 + tx) / divide, (0.0 + ty) / divide,
+            (0.0 + tx) / divide, (0.0 + ty) / divide,
+        };
+    } else {
+        return [8]f32{
+            (1.0 + tx) / divide, (0.5 + ty) / divide,
+            (0.0 + tx) / divide, (0.5 + ty) / divide,
+            (0.0 + tx) / divide, (0.0 + ty) / divide,
+            (1.0 + tx) / divide, (0.0 + ty) / divide,
+        };
+    }
+}
+
+// TODO: merge model types with uv types to avoid redundant information?
 pub const UvType = enum {
     basic, // Blocks with the same texture on each side
     barrel, // Blocks with a top, side, and bottom
     advanced, // Blocks with specific textures for each side
+    slab, // Just like barrel but for slabs
     plant, // Plants made of two planes
+    liquid, // Liquids (only still liquids as of now)
 };
 
 /// Write the right UV depending on the context and block id
@@ -47,7 +73,9 @@ pub fn writeUV(arraylist: *std.ArrayList(f32), context: Context, block_id: u8) v
         .basic => writeBasicUV(arraylist, context, block.tex_id),
         .barrel => writeBarrelUV(arraylist, context, block.tex_id, block.top_tex_id, block.bottom_tex_id),
         .advanced => writeAdvancedUV(arraylist, context, block.tex_id, block.east_tex_id, block.south_tex_id, block.west_tex_id, block.top_tex_id, block.bottom_tex_id),
-        .plant => writePlantUV(arraylist, block.tex_id),
+        .slab => writeSlabUV(arraylist, context, block.tex_id, block.top_tex_id, block.bottom_tex_id),
+        .plant => writeNFacesUV(4, arraylist, block.tex_id),
+        .liquid => writeNFacesUV(1, arraylist, block.tex_id),
     }
 }
 
@@ -152,11 +180,30 @@ fn writeAdvancedUV(arraylist: *std.ArrayList(f32), context: Context, north_tex_i
     }
 }
 
-/// Write uv for the 2-planes plants
-fn writePlantUV(arraylist: *std.ArrayList(f32), tex_id: u8) void {
+/// Write uv for slabs (barrel-like)
+fn writeSlabUV(arraylist: *std.ArrayList(f32), context: Context, side_tex_id: u8, top_tex_id: u8, bottom_tex_id: u8) void {
+    const side_tex_coords = getSlabUV(side_tex_id, false);
+
+    if (context.north)
+        arraylist.appendSliceAssumeCapacity(&side_tex_coords);
+    if (context.east)
+        arraylist.appendSliceAssumeCapacity(&side_tex_coords);
+    if (context.south)
+        arraylist.appendSliceAssumeCapacity(&side_tex_coords);
+    if (context.west)
+        arraylist.appendSliceAssumeCapacity(&side_tex_coords);
+    const top_tex_coords = getTerrainUV(top_tex_id, false);
+    arraylist.appendSliceAssumeCapacity(&top_tex_coords);
+    if (context.down) {
+        const bottom_tex_coords = getTerrainUV(bottom_tex_id, true);
+        arraylist.appendSliceAssumeCapacity(&bottom_tex_coords);
+    }
+}
+
+/// Write uv for a predetermined amount of faces
+fn writeNFacesUV(comptime faces: comptime_int, arraylist: *std.ArrayList(f32), tex_id: u8) void {
     const tex_coords = getTerrainUV(tex_id, false);
-    arraylist.appendSliceAssumeCapacity(&tex_coords);
-    arraylist.appendSliceAssumeCapacity(&tex_coords);
-    arraylist.appendSliceAssumeCapacity(&tex_coords);
-    arraylist.appendSliceAssumeCapacity(&tex_coords);
+    inline for (0..faces) |_| {
+        arraylist.appendSliceAssumeCapacity(&tex_coords);
+    }
 }

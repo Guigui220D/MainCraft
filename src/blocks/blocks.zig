@@ -13,6 +13,7 @@ fn texpos(x: comptime_int, y: comptime_int) comptime_int {
 }
 
 // TODO: Struct containing all block ids by name as decls for comptime
+// TODO: does the fullblock property even make sense, knowing transparent and block model?
 
 /// Table of all block types
 pub const table = [256]Block{
@@ -68,11 +69,11 @@ pub const table = [256]Block{
     .{},
     .{},
     // 48
+    .{ .name = "stoneMoss", .tex_id = texpos(4, 2) },
     .{},
     .{},
     .{},
-    .{},
-    .{},
+    .{ .name = "mobSpawner", .tex_id = texpos(1, 4), .full_block = false, .transparent = true },
     .{},
     .{},
     .{},

@@ -122,7 +122,7 @@ pub fn update(self: *GameWindow, delta: f32) !void {
                 .rotateByAxisAngle(.{ .x = 1.0, .y = 0.0, .z = 0.0 }, pitch)
                 .rotateByAxisAngle(.{ .x = 0.0, .y = 1.0, .z = 0.0 }, yaw);
 
-            game.player.setHeadAngle(yaw, pitch);
+            game.player.setHeadAngle(self.cam_rot.x, self.cam_rot.y);
 
             // Player movement
             if (rl.isKeyDown(.w)) {

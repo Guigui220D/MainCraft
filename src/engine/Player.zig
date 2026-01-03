@@ -18,11 +18,11 @@ pos: coord.Vec3f,
 hitbox: coord.HitboxAABB,
 /// Last position sent to the server
 last_pos: coord.Vec3f,
-/// Head yaw (rotation along y axis)
+/// Head yaw in degrees (rotation along y axis)
 yaw: f32,
 /// Last yaw sent to the server
 last_yaw: f32,
-/// Head pitch (rotation up/down)
+/// Head pitch in degrees(rotation up/down)
 pitch: f32,
 /// Last pitch sent to the server
 last_pitch: f32,
@@ -103,9 +103,11 @@ pub fn update(self: *Player, delta: f32) void {
         mov_x_local /= norm;
         mov_z_local /= norm;
 
+        const yaw = std.math.degreesToRadians(-self.yaw);
+
         // Apply movement
-        self.pos.x += (@sin(-self.yaw) * mov_x_local + @cos(self.yaw) * mov_z_local) * delta * player_speed;
-        self.pos.z -= (@cos(self.yaw) * mov_x_local - @sin(-self.yaw) * mov_z_local) * delta * player_speed;
+        self.pos.x += (@sin(-yaw) * mov_x_local + @cos(yaw) * mov_z_local) * delta * player_speed;
+        self.pos.z -= (@cos(yaw) * mov_x_local - @sin(-yaw) * mov_z_local) * delta * player_speed;
     }
 
     self.walking.forward = false;
@@ -157,7 +159,7 @@ pub fn makePositionPacket(self: *Player) net.server_bound.OutboundPacket {
                 .y_center_position = self.pos.y + 1.0,
                 .z_position = self.pos.z,
                 .pitch = self.pitch,
-                .yaw = self.yaw,
+                .yaw = self.yaw + 180.0,
                 .on_ground = true,
             } };
         } else {
@@ -173,7 +175,7 @@ pub fn makePositionPacket(self: *Player) net.server_bound.OutboundPacket {
         if (did_turn) {
             return .{ .player_look_12 = .{
                 .pitch = self.pitch,
-                .yaw = self.yaw,
+                .yaw = self.yaw + 180.0,
                 .on_ground = true,
             } };
         } else {

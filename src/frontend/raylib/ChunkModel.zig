@@ -194,6 +194,15 @@ fn generateSingleMesh(alloc: std.mem.Allocator, chunk: Chunk, offset: *usize, tr
         if (face_count == 0)
             continue;
 
+        // Temporary
+        var temp_xyz = xyz;
+        temp_xyz.y +|= 1;
+
+        const blocklight = chunk.getBlockLight(temp_xyz);
+        const skylight = chunk.getSkyLight(temp_xyz);
+        const metadata = chunk.getBlockMeta(xyz);
+        _ = metadata;
+
         const vertex_count: c_ushort = face_count * 4;
 
         // Stop filling buffers: we can't use more vertex indices
@@ -210,6 +219,11 @@ fn generateSingleMesh(alloc: std.mem.Allocator, chunk: Chunk, offset: *usize, tr
         // Colors (later based on chunk lighting)
         try colors.ensureUnusedCapacity(rl.mem, vertex_count);
         blocks.uv.writeColors(&colors, context, vertex_count, block_id);
+        blocks.uv.adjustColors(
+            @ptrCast(colors.items[(colors.items.len - vertex_count)..(colors.items.len)]),
+            blocklight,
+            skylight,
+        );
 
         // Add UV
         try texcoords.ensureUnusedCapacity(rl.mem, vertex_count * 2);

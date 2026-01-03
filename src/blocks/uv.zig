@@ -113,6 +113,23 @@ pub fn writeColors(arraylist: *std.ArrayList(u32), context: Context, vertex_coun
     }
 }
 
+/// Apply light level to color
+pub fn adjustColors(colors: []u8, blocklight: u4, skylight: u4) void {
+    for (colors, 0..) |*col, i| {
+        if (i % 4 == 3)
+            continue;
+
+        // TODO: no! this is per face not per block
+
+        const total_light = blocklight +| skylight;
+
+        var temp: u32 = col.*;
+        temp *= total_light;
+        temp /= 15;
+        col.* = @intCast(temp);
+    }
+}
+
 /// Write uv for the default basic scenario of blocks
 fn writeBasicUV(arraylist: *std.ArrayList(f32), context: Context, tex_id: u8) void {
     const face_count = context.faceCount();

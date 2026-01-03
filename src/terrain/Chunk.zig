@@ -17,6 +17,9 @@ pub const block_data_len = (height * width * width);
 world: *World,
 coords: coord.Chunk,
 blocks_data: []u8,
+metadata: []u8,
+blocklight: []u8,
+skylight: []u8,
 model: ?io.ChunkModel,
 /// ~~Flag~~ Value indicating if the model is up to date or not
 /// Used to be a boolean, is now a value: 0 means not dirty, anything else means dirty
@@ -31,14 +34,34 @@ pub fn initEmpty(world: *World, alloc: std.mem.Allocator, coords: coord.Chunk) !
     ret.* = .{
         .world = world,
         .coords = coords,
-        .blocks_data = try alloc.alloc(u8, block_data_len),
+        .blocks_data = undefined,
+        .metadata = undefined,
+        .blocklight = undefined,
+        .skylight = undefined,
         .model = null,
         .model_dirty = 0,
     };
 
+    ret.blocks_data = try alloc.alloc(u8, block_data_len);
+    errdefer alloc.free(ret.blocks_data);
+
+    ret.metadata = try alloc.alloc(u8, block_data_len / 2);
+    errdefer alloc.free(ret.metadata);
+
+    ret.blocklight = try alloc.alloc(u8, block_data_len / 2);
+    errdefer alloc.free(ret.blocklight);
+
+    ret.skylight = try alloc.alloc(u8, block_data_len / 2);
+    errdefer alloc.free(ret.skylight);
+
     // Fill with zeros
-    for (ret.blocks_data) |*bl| {
-        bl.* = 0;
+    for (0..block_data_len) |i| {
+        ret.blocks_data[i] = 0;
+        if (i < block_data_len / 2) {
+            ret.metadata[i] = 0;
+            ret.blocklight[i] = 0;
+            ret.skylight[i] = 0;
+        }
     }
 
     return ret;
@@ -48,11 +71,11 @@ pub fn initEmpty(world: *World, alloc: std.mem.Allocator, coords: coord.Chunk) !
 pub fn setChunkData(self: *Chunk, data: []const u8, x1: i32, y1: i32, z1: i32, x2: i32, y2: i32, z2: i32) []const u8 {
     var remaining = data;
 
-    const dx = @abs(x2 - x1);
+    //const dx = @abs(x2 - x1);
     const dy = @abs(y2 - y1);
-    const dz = @abs(z2 - z1);
+    //const dz = @abs(z2 - z1);
 
-    // Copy each vertical slice
+    // Block ids (Copy each vertical slice)
     var x = x1;
     while (x < x2) : (x += 1) {
         var z = z1;
@@ -63,11 +86,38 @@ pub fn setChunkData(self: *Chunk, data: []const u8, x1: i32, y1: i32, z1: i32, x
         }
     }
 
-    // Ignore remaining data (TODO: don't ignore metadata)
-    const meta_len = (dx * dy * dz) / 2;
-    remaining = remaining[(meta_len)..]; // meta
-    remaining = remaining[(meta_len)..]; // blocklight
-    remaining = remaining[(meta_len)..]; // skylight
+    // Block metadata
+    x = x1;
+    while (x < x2) : (x += 1) {
+        var z = z1;
+        while (z < z2) : (z += 1) {
+            const dest_offset: u32 = @as(u32, @bitCast(x << 11 | z << 7 | y1)) / 2;
+            @memcpy(self.metadata[dest_offset..(dest_offset + (dy / 2))], remaining[0..(dy / 2)]);
+            remaining = remaining[(dy / 2)..];
+        }
+    }
+
+    // Block light
+    x = x1;
+    while (x < x2) : (x += 1) {
+        var z = z1;
+        while (z < z2) : (z += 1) {
+            const dest_offset: u32 = @as(u32, @bitCast(x << 11 | z << 7 | y1)) / 2;
+            @memcpy(self.blocklight[dest_offset..(dest_offset + (dy / 2))], remaining[0..(dy / 2)]);
+            remaining = remaining[(dy / 2)..];
+        }
+    }
+
+    // Sky light
+    x = x1;
+    while (x < x2) : (x += 1) {
+        var z = z1;
+        while (z < z2) : (z += 1) {
+            const dest_offset: u32 = @as(u32, @bitCast(x << 11 | z << 7 | y1)) / 2;
+            @memcpy(self.skylight[dest_offset..(dest_offset + (dy / 2))], remaining[0..(dy / 2)]);
+            remaining = remaining[(dy / 2)..];
+        }
+    }
 
     return remaining;
 }
@@ -103,6 +153,9 @@ pub fn updateModel(self: *Chunk, alloc: std.mem.Allocator) !void {
 
 pub fn deinit(self: Chunk, alloc: std.mem.Allocator) void {
     alloc.free(self.blocks_data);
+    alloc.free(self.metadata);
+    alloc.free(self.blocklight);
+    alloc.free(self.skylight);
 }
 
 /// Get block id or 0 if the local coordinates are outside of the chunk
@@ -145,6 +198,45 @@ pub fn setBlockId(self: *Chunk, pos: coord.Block, block_id: u8) void {
 
     const index = indexFromCoord(pos);
     self.blocks_data[index] = block_id;
+}
+
+/// Get block block-lighting level
+pub fn getBlockLight(self: Chunk, pos: coord.Block) u4 {
+    if (!pos.isWithinChunk())
+        return 0;
+    const index = indexFromCoord(pos);
+    const val = self.blocklight[index / 2];
+    if (index % 2 == 0) {
+        return @intCast(val & 0x0f);
+    } else {
+        return @intCast((val & 0xf0) >> 4);
+    }
+}
+
+/// Get block sky-lighting level
+pub fn getSkyLight(self: Chunk, pos: coord.Block) u4 {
+    if (!pos.isWithinChunk())
+        return 0;
+    const index = indexFromCoord(pos);
+    const val = self.skylight[index / 2];
+    if (index % 2 == 0) {
+        return @intCast(val & 0x0f);
+    } else {
+        return @intCast((val & 0xf0) >> 4);
+    }
+}
+
+/// Get block metadata
+pub fn getBlockMeta(self: Chunk, pos: coord.Block) u4 {
+    if (!pos.isWithinChunk())
+        return 0;
+    const index = indexFromCoord(pos);
+    const val = self.metadata[index / 2];
+    if (index % 2 == 0) {
+        return @intCast(val & 0x0f);
+    } else {
+        return @intCast((val & 0xf0) >> 4);
+    }
 }
 
 pub fn getContext(self: Chunk, pos: coord.Block) blocks.Context {

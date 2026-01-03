@@ -137,6 +137,8 @@ pub fn update(self: *GameWindow, delta: f32) !void {
             if (rl.isKeyDown(.d)) {
                 game.player.walkRight();
             }
+            if (rl.isKeyDown(.space))
+                game.player.jump();
         }
     }
 

@@ -8,12 +8,29 @@ const blocks = @import("blocks");
 
 const Player = @This();
 
+/// Player walking speed
 const player_speed = 4.317; // TODO: Check this value in the code
+/// Jumping acceleration on the Y axis (once when jumping)
+const jumping_acc = 0.42;
+/// Gravity acceleration (per tick)
+const gravity = 0.08;
+
+// TODO for player movement:
+// proper falling speed with acceleration
+// blocks pushing against instead of cancelling movement
+// jumping
+// On ground detection
 
 /// Reference to the game
 game: *Game,
 /// Current position of the player
 pos: coord.Vec3f,
+/// Vertical speed
+vspeed: f64,
+/// On ground flag
+on_ground: bool,
+/// Never been on ground (before loading terrain)
+been_on_ground: bool,
 /// Hitbox
 hitbox: coord.HitboxAABB,
 /// Last position sent to the server
@@ -38,6 +55,9 @@ pub fn init(game: *Game) Player {
     var ret: Player = undefined;
     ret.game = game;
     ret.pos = .{ .x = 0, .y = 0, .z = 0 };
+    ret.vspeed = -0.1;
+    ret.on_ground = false;
+    ret.been_on_ground = false;
     ret.hitbox = .{
         .a = .{ .x = -0.3, .y = 0, .z = -0.3 },
         .b = .{ .x = 0.3, .y = 1.8, .z = 0.3 },
@@ -76,6 +96,13 @@ pub fn resetHeadAngle(self: *Player, yaw: f32, pitch: f32) void {
     self.yaw = yaw;
     self.last_pitch = pitch;
     self.pitch = pitch;
+}
+
+pub fn jump(self: *Player) void {
+    if (!self.on_ground)
+        return;
+    self.vspeed = jumping_acc;
+    self.on_ground = false;
 }
 
 pub fn update(self: *Player, delta: f32) void {
@@ -119,11 +146,18 @@ pub fn update(self: *Player, delta: f32) void {
         self.pos = prev_pos;
 
     // Gravity (temporary, prototype)
+    // TODO: not sure about all of this!
     prev_pos = self.pos;
-    self.pos.y -= delta;
+    if (self.been_on_ground)
+        self.vspeed -= gravity * delta * 20; // *20 because per tick
+    self.pos.y += self.vspeed * delta * 32; // 32 because the values are divided by 32 in the original (??)
 
-    if (self.touchesTerrain())
+    if (self.touchesTerrain()) {
         self.pos = prev_pos;
+        self.vspeed = 0;
+        self.been_on_ground = true;
+        self.on_ground = true;
+    }
 }
 
 // Temporary: later, smarter things with how much of a movement should be cancelled and all
@@ -160,7 +194,7 @@ pub fn makePositionPacket(self: *Player) net.server_bound.OutboundPacket {
                 .z_position = self.pos.z,
                 .pitch = self.pitch,
                 .yaw = self.yaw + 180.0,
-                .on_ground = true,
+                .on_ground = self.on_ground,
             } };
         } else {
             return .{ .player_position_11 = .{
@@ -168,7 +202,7 @@ pub fn makePositionPacket(self: *Player) net.server_bound.OutboundPacket {
                 .y_position = self.pos.y,
                 .y_center_position = self.pos.y + 1.0,
                 .z_position = self.pos.z,
-                .on_ground = true,
+                .on_ground = self.on_ground,
             } };
         }
     } else {
@@ -176,12 +210,12 @@ pub fn makePositionPacket(self: *Player) net.server_bound.OutboundPacket {
             return .{ .player_look_12 = .{
                 .pitch = self.pitch,
                 .yaw = self.yaw + 180.0,
-                .on_ground = true,
+                .on_ground = self.on_ground,
             } };
         } else {
             return .{
                 .on_ground_10 = .{
-                    .on_ground = true,
+                    .on_ground = self.on_ground,
                 },
             };
         }

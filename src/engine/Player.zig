@@ -113,6 +113,8 @@ pub fn update(self: *Player, delta: f32) void {
     var mov_x_local: f32 = 0;
     var mov_z_local: f32 = 0;
 
+    const was_touching_block = self.sideTouchesTerrain(.up);
+
     if (self.walking.forward)
         mov_x_local += 1;
 
@@ -132,9 +134,35 @@ pub fn update(self: *Player, delta: f32) void {
 
         const yaw = std.math.degreesToRadians(-self.yaw);
 
+        const delta_x = (-@sin(yaw) * mov_x_local + @cos(yaw) * mov_z_local) * delta * player_speed;
+        const delta_z = (-@cos(yaw) * mov_x_local - @sin(yaw) * mov_z_local) * delta * player_speed;
+
         // Apply movement
-        self.pos.x += (@sin(-yaw) * mov_x_local + @cos(yaw) * mov_z_local) * delta * player_speed;
-        self.pos.z -= (@cos(yaw) * mov_x_local - @sin(-yaw) * mov_z_local) * delta * player_speed;
+        self.pos.x += delta_x;
+        self.pos.z += delta_z;
+
+        // Limit movement when touching a wall
+        if (!was_touching_block) {
+            if (delta_x > 0) {
+                if (self.sideTouchesTerrain(.east)) {
+                    self.pos.x = prev_pos.x;
+                }
+            } else {
+                if (self.sideTouchesTerrain(.west)) {
+                    self.pos.x = prev_pos.x;
+                }
+            }
+
+            if (delta_z > 0) {
+                if (self.sideTouchesTerrain(.south)) {
+                    self.pos.z = prev_pos.z;
+                }
+            } else {
+                if (self.sideTouchesTerrain(.north)) {
+                    self.pos.z = prev_pos.z;
+                }
+            }
+        }
     }
 
     self.walking.forward = false;
@@ -142,8 +170,8 @@ pub fn update(self: *Player, delta: f32) void {
     self.walking.left = false;
     self.walking.right = false;
 
-    if (self.touchesTerrain())
-        self.pos = prev_pos;
+    //if (self.touchesTerrain())
+    //    self.pos = prev_pos;
 
     // Gravity (temporary, prototype)
     // TODO: not sure about all of this!
@@ -152,18 +180,41 @@ pub fn update(self: *Player, delta: f32) void {
         self.vspeed -= gravity * delta * 20; // *20 because per tick
     self.pos.y += self.vspeed * delta * 32; // 32 because the values are divided by 32 in the original (??)
 
-    if (self.touchesTerrain()) {
-        self.pos = prev_pos;
-        self.vspeed = 0;
-        self.been_on_ground = true;
-        self.on_ground = true;
+    if (self.vspeed > 0) {
+        if (self.sideTouchesTerrain(.up)) {
+            self.vspeed = 0;
+        }
+    } else if (self.vspeed < 0) {
+        if (self.sideTouchesTerrain(.down)) {
+            self.pos.y = @round(self.pos.y);
+            self.vspeed = 0;
+            self.been_on_ground = true;
+            self.on_ground = true;
+        }
     }
+
+    //while (self.feetsTouchTerrain()) {
+    //self.pos.y += 0.1 * delta;
+    //}
 }
 
 // Temporary: later, smarter things with how much of a movement should be cancelled and all
 fn touchesTerrain(self: Player) bool {
     const hitbox = self.hitbox.offset(self.pos);
     var block_it = hitbox.getBlocks();
+    while (block_it.next()) |block_pos| {
+        const block_id = self.game.world.getBlockId(block_pos);
+        const blocking = blocks.table[block_id].hitbox;
+        if (blocking)
+            return true;
+    }
+    return false;
+}
+
+// Temporary: later, smarter things with how much of a movement should be cancelled and all
+fn sideTouchesTerrain(self: Player, face: coord.Direction) bool {
+    const hitbox = self.hitbox.offset(self.pos);
+    var block_it = hitbox.getFaceBlocks(face);
     while (block_it.next()) |block_pos| {
         const block_id = self.game.world.getBlockId(block_pos);
         const blocking = blocks.table[block_id].hitbox;

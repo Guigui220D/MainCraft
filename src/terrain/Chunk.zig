@@ -119,12 +119,12 @@ pub fn getContext(self: Chunk, pos: coord.Block) blocks.Context {
     defer zone.end();
 
     return .{
-        .north = !blocks.table[getBlockId(self, pos.north())].full_block,
-        .east = !blocks.table[getBlockId(self, pos.east())].full_block,
-        .south = !blocks.table[getBlockId(self, pos.south())].full_block,
-        .west = !blocks.table[getBlockId(self, pos.west())].full_block,
-        .up = !blocks.table[getBlockId(self, pos.up())].full_block,
-        .down = !blocks.table[getBlockId(self, pos.down())].full_block,
+        .north = !blocks.table[getBlockId(self, pos.neighbor(.north))].full_block,
+        .east = !blocks.table[getBlockId(self, pos.neighbor(.east))].full_block,
+        .south = !blocks.table[getBlockId(self, pos.neighbor(.south))].full_block,
+        .west = !blocks.table[getBlockId(self, pos.neighbor(.west))].full_block,
+        .up = !blocks.table[getBlockId(self, pos.neighbor(.up))].full_block,
+        .down = !blocks.table[getBlockId(self, pos.neighbor(.down))].full_block,
     };
 }
 

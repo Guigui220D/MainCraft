@@ -7,6 +7,7 @@ pub const vec = @import("vectors.zig");
 pub const Block = vec.Block;
 pub const Chunk = vec.Chunk;
 pub const Vec3f = vec.Vec3f;
+pub const Direction = @import("direction.zig").Direction;
 
 test "coord tests" {
     std.testing.refAllDecls(@import("vectors.zig"));

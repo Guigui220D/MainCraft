@@ -68,7 +68,7 @@ pub fn init(client: *Client, alloc: std.mem.Allocator, window: *io.GameWindow, a
     client.is_connected = false;
 
     // Game state
-    client.game = try .init(alloc, client, window);
+    try client.game.init(alloc, client, window);
     errdefer client.game.deinit();
 
     // Running flag

@@ -88,6 +88,15 @@ pub const Vec3f = struct {
             block.z -= 1;
         return block;
     }
+
+    /// Adds two vectors
+    pub inline fn add(a: Vec3f, b: Vec3f) Vec3f {
+        return .{
+            .x = a.x + b.x,
+            .y = a.y + b.y,
+            .z = a.z + b.z,
+        };
+    }
 };
 
 test "Block from Vec3f" {

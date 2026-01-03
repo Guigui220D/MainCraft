@@ -50,6 +50,14 @@ pub fn size(self: HitboxAABB) Vec3f {
     };
 }
 
+/// Adds a 3d vector offsets to the two corners of the hitbox
+pub fn offset(self: HitboxAABB, off: Vec3f) HitboxAABB {
+    return .{
+        .a = self.a.add(off),
+        .b = self.b.add(off),
+    };
+}
+
 /// Iterator structure to iterate over blocks in a volume
 pub const BlockIterator = struct {
     a: Block, // must be < b

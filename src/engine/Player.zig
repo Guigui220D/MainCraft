@@ -3,13 +3,19 @@
 const std = @import("std");
 const coord = @import("coord");
 const net = @import("net");
+const Game = @import("Game.zig");
+const blocks = @import("blocks");
 
 const Player = @This();
 
 const player_speed = 4.317; // TODO: Check this value in the code
 
+/// Reference to the game
+game: *Game,
 /// Current position of the player
 pos: coord.Vec3f,
+/// Hitbox
+hitbox: coord.HitboxAABB,
 /// Last position sent to the server
 last_pos: coord.Vec3f,
 /// Head yaw (rotation along y axis)
@@ -28,9 +34,14 @@ walking: packed struct {
     right: bool,
 },
 
-pub fn init() Player {
+pub fn init(game: *Game) Player {
     var ret: Player = undefined;
+    ret.game = game;
     ret.pos = .{ .x = 0, .y = 0, .z = 0 };
+    ret.hitbox = .{
+        .a = .{ .x = -0.3, .y = 0, .z = -0.3 },
+        .b = .{ .x = 0.3, .y = 1.8, .z = 0.3 },
+    };
     ret.last_pos = .{ .x = 0, .y = 0, .z = 0 };
     ret.yaw = 0;
     ret.last_yaw = 0;
@@ -68,6 +79,9 @@ pub fn resetHeadAngle(self: *Player, yaw: f32, pitch: f32) void {
 }
 
 pub fn update(self: *Player, delta: f32) void {
+    // Save movement in order to cancel it (temporary)
+    var prev_pos = self.pos;
+
     // Normalize movement
     var mov_x_local: f32 = 0;
     var mov_z_local: f32 = 0;
@@ -98,6 +112,29 @@ pub fn update(self: *Player, delta: f32) void {
     self.walking.backward = false;
     self.walking.left = false;
     self.walking.right = false;
+
+    if (self.touchesTerrain())
+        self.pos = prev_pos;
+
+    // Gravity (temporary, prototype)
+    prev_pos = self.pos;
+    self.pos.y -= delta;
+
+    if (self.touchesTerrain())
+        self.pos = prev_pos;
+}
+
+// Temporary: later, smarter things with how much of a movement should be cancelled and all
+fn touchesTerrain(self: Player) bool {
+    const hitbox = self.hitbox.offset(self.pos);
+    var block_it = hitbox.getBlocks();
+    while (block_it.next()) |block_pos| {
+        const block_id = self.game.world.getBlockId(block_pos);
+        const blocking = blocks.table[block_id].hitbox;
+        if (blocking)
+            return true;
+    }
+    return false;
 }
 
 pub fn makePositionPacket(self: *Player) net.server_bound.OutboundPacket {

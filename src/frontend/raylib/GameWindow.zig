@@ -143,7 +143,7 @@ pub fn update(self: *GameWindow, delta: f32) !void {
     // Update camera position
     if (!self.freecam) {
         // TODO: give the player a cam pos function (for head bobbing and whatnot)
-        self.camera.position = vec.coordToRlVec(game.player.pos);
+        self.camera.position = vec.coordToRlVec(game.player.pos).add(.{ .x = 0, .y = 1.5, .z = 0 });
         self.camera.target = self.camera.position.add(self.cam_rel_pos.scale(1.0));
     }
 
@@ -218,7 +218,17 @@ pub fn drawWorld(self: GameWindow) void {
         rl.gl.rlDisableWireMode();
 
     // Draw ourself
-    rl.drawCube(vec.coordToRlVec(game.player.pos), 0.6, 1.8, 0.6, .dark_purple);
+    {
+        const box = game.player.hitbox;
+        const size = box.size();
+        rl.drawCubeWires(
+            vec.coordToRlVec(game.player.pos).add(.{ .x = 0, .y = @floatCast(size.y / 2.0), .z = 0 }),
+            @floatCast(size.x),
+            @floatCast(size.y),
+            @floatCast(size.z),
+            .dark_purple,
+        );
+    }
 
     // Draw entities
     var it = game.entities.entities.iterator();

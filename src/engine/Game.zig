@@ -33,27 +33,23 @@ entities: Entities,
 player: Player,
 
 /// Inits a game state
-pub fn init(alloc: std.mem.Allocator, client: *Client, window: *io.GameWindow) !Game {
-    var ret: Game = undefined;
-
+pub fn init(game: *Game, alloc: std.mem.Allocator, client: *Client, window: *io.GameWindow) !void {
     // References to components
-    ret.alloc = alloc;
-    ret.client = client;
-    ret.window = window;
+    game.alloc = alloc;
+    game.client = client;
+    game.window = window;
 
     // General variables
-    ret.last_tick = 0;
+    game.last_tick = 0;
 
     // Game state components
-    ret.world = try World.init(alloc);
-    errdefer ret.world.deinit();
+    game.world = try World.init(alloc);
+    errdefer game.world.deinit();
 
-    ret.entities = try Entities.init(alloc);
-    errdefer ret.entities.deinit();
+    game.entities = try Entities.init(alloc);
+    errdefer game.entities.deinit();
 
-    ret.player = .init();
-
-    return ret;
+    game.player = .init(game);
 }
 
 /// Deinits the game state
@@ -128,11 +124,13 @@ pub fn handlePacket(self: *Game, packet: net.InboundPacket) !void {
             //);
         },
         .mob_spawn_24 => |sp| {
-            try self.entities.addEntity(
+            self.entities.addEntity(
                 sp.entity_id,
                 .fromIntsDiv32(sp.x_position, sp.y_position, sp.z_position),
                 @enumFromInt(sp.entity_type),
-            );
+            ) catch |e| {
+                std.debug.print("Couldn't add entity {}, error {}\n", .{ sp.entity_id, e });
+            };
         },
         .destroy_entity_29 => |stroy| {
             try self.entities.removeEntity(stroy.entity_id);

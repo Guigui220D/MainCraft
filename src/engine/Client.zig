@@ -5,6 +5,7 @@ const network = @import("network");
 const net = @import("net");
 const queue = @import("spsc_queue");
 const io = @import("io");
+const tracy = @import("tracy");
 
 const Game = @import("Game.zig");
 const Client = @This();
@@ -141,6 +142,13 @@ pub fn deinit(self: *Client) void {
 
 /// Update the client
 pub fn update(self: *Client, delta: f32) !bool {
+    const zone = tracy.Zone.begin(.{
+        .name = "Client update",
+        .src = @src(),
+        .color = .blue1,
+    });
+    defer zone.end();
+
     if (self.server_running.load(.acquire)) {
         // Pop new packet
         while (self.in_queue.front()) |new_packet| {

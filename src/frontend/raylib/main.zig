@@ -3,6 +3,7 @@
 const std = @import("std");
 const rl = @import("raylib");
 const engine = @import("engine");
+const tracy = @import("tracy");
 
 const GameWindow = @import("GameWindow.zig");
 
@@ -30,9 +31,17 @@ pub fn main(default_alloc: std.mem.Allocator) !void {
 
         // TODO: who should call that?
         try window.update(dt);
-        window.beginDraw();
-        window.drawWorld();
-        window.drawGui();
+        {
+            const zone = tracy.Zone.begin(.{
+                .name = "Game draw",
+                .src = @src(),
+                .color = .red1,
+            });
+            defer zone.end();
+            window.beginDraw();
+            window.drawWorld();
+            window.drawGui();
+        }
         window.endDraw();
     }
 }

@@ -10,6 +10,8 @@ const tracy = @import("tracy");
 
 const ChunkModel = @This();
 
+// TODO: make the meshes on a separate thread
+
 // Material
 // TODO: ressource manager
 var texture: rl.Texture = undefined;
@@ -180,13 +182,6 @@ fn generateSingleMesh(alloc: std.mem.Allocator, chunk: Chunk, offset: *usize, tr
         if (block_id == 0)
             continue;
 
-        const block_zone = tracy.Zone.begin(.{
-            .name = "Single block meshing (rl)",
-            .src = @src(),
-            .color = .orange_red,
-        });
-        defer block_zone.end();
-
         const block = blocks.table[block_id];
         if (block.transparent != transparent)
             continue;
@@ -204,13 +199,6 @@ fn generateSingleMesh(alloc: std.mem.Allocator, chunk: Chunk, offset: *usize, tr
         // Stop filling buffers: we can't use more vertex indices
         if (next_id > std.math.maxInt(c_ushort) - vertex_count)
             break;
-
-        const writemesh_zone = tracy.Zone.begin(.{
-            .name = "Write block mesh",
-            .src = @src(),
-            .color = .orange_red1,
-        });
-        defer writemesh_zone.end();
 
         // Add vertices
         blocks.models.writeVertices(&vertices, block.block_model, xyz, context);

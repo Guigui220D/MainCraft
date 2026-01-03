@@ -108,13 +108,6 @@ pub fn deinit(self: Chunk, alloc: std.mem.Allocator) void {
 /// Get block id or 0 if the local coordinates are outside of the chunk
 /// The position is within the chunk, not global coordinates
 pub fn getBlockId(self: Chunk, pos: coord.Block) u8 {
-    const zone = tracy.Zone.begin(.{
-        .name = "Get block",
-        .src = @src(),
-        .color = .pink1,
-    });
-    defer zone.end();
-
     if (!pos.isWithinChunk())
         return 0;
     const index = indexFromCoord(pos);
@@ -125,13 +118,6 @@ pub fn getBlockId(self: Chunk, pos: coord.Block) u8 {
 /// If the coordinates are for a neighbor that isn't loaded, this returns 0
 /// The position is in the chunk's coordiante space within, not global coordinates
 pub fn getBlockIdTranscend(self: Chunk, pos: coord.Block) u8 {
-    const zone = tracy.Zone.begin(.{
-        .name = "Get block transcend",
-        .src = @src(),
-        .color = .pink1,
-    });
-    defer zone.end();
-
     if (pos.isWithinChunk()) {
         // Local block
         const index = indexFromCoord(pos);
@@ -162,13 +148,6 @@ pub fn setBlockId(self: *Chunk, pos: coord.Block, block_id: u8) void {
 }
 
 pub fn getContext(self: Chunk, pos: coord.Block) blocks.Context {
-    const zone = tracy.Zone.begin(.{
-        .name = "Get context",
-        .src = @src(),
-        .color = .pink,
-    });
-    defer zone.end();
-
     const block_n = blocks.table[getBlockIdTranscend(self, pos.north())];
     const block_e = blocks.table[getBlockIdTranscend(self, pos.east())];
     const block_s = blocks.table[getBlockIdTranscend(self, pos.south())];

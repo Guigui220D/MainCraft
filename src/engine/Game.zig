@@ -3,10 +3,10 @@
 const std = @import("std");
 const net = @import("net");
 const io = @import("io");
+const tracy = @import("tracy");
 
 const Entities = @import("entities").EntityManager;
 const World = @import("terrain").World;
-
 const Client = @import("Client.zig");
 const Game = @This();
 
@@ -58,7 +58,17 @@ pub fn deinit(self: *Game) void {
     self.entities.deinit();
 }
 
+// Update game engine
 pub fn update(self: *Game, delta: f32) !void {
+    const zone = tracy.Zone.begin(.{
+        .name = "Game update",
+        .src = @src(),
+        .color = .blue2,
+    });
+    defer zone.end();
+
+    _ = try self.world.updateModel();
+
     self.player.update(delta);
     _ = try self.maybeTick();
 }
@@ -73,8 +83,12 @@ fn maybeTick(self: *Game) !bool {
 
 /// Run engine tick
 fn tick(self: *Game) !void {
-    // Update chunk models (TODO: do that more than once per tick, maybe once or more per frame)
-    _ = try self.world.updateModel();
+    const zone = tracy.Zone.begin(.{
+        .name = "Game tick",
+        .src = @src(),
+        .color = .blue3,
+    });
+    defer zone.end();
 
     if (self.client.is_connected) {
         const position_packet = self.player.makePositionPacket();

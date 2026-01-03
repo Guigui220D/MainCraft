@@ -10,6 +10,8 @@ const World = @import("terrain").World;
 const Client = @import("Client.zig");
 const Game = @This();
 
+const Player = @import("Player.zig");
+
 /// Allocator
 alloc: std.mem.Allocator,
 
@@ -27,29 +29,27 @@ last_tick: i64,
 world: World,
 /// Entities
 entities: Entities,
-/// Temporary
-last_plm: net.server_bound.Packet13PlayerLookMove,
+/// Player
+player: Player,
 
 /// Inits a game state
-pub fn init(alloc: std.mem.Allocator, client: *Client, window: *io.GameWindow) !Game {
-    var ret: Game = undefined;
-
+pub fn init(game: *Game, alloc: std.mem.Allocator, client: *Client, window: *io.GameWindow) !void {
     // References to components
-    ret.alloc = alloc;
-    ret.client = client;
-    ret.window = window;
+    game.alloc = alloc;
+    game.client = client;
+    game.window = window;
 
     // General variables
-    ret.last_tick = 0;
+    game.last_tick = 0;
 
     // Game state components
-    ret.world = try World.init(alloc);
-    errdefer ret.world.deinit();
+    game.world = try World.init(alloc);
+    errdefer game.world.deinit();
 
-    ret.entities = try Entities.init(alloc);
-    errdefer ret.entities.deinit();
+    game.entities = try Entities.init(alloc);
+    errdefer game.entities.deinit();
 
-    return ret;
+    game.player = .init(game);
 }
 
 /// Deinits the game state
@@ -58,28 +58,27 @@ pub fn deinit(self: *Game) void {
     self.entities.deinit();
 }
 
+pub fn update(self: *Game, delta: f32) !void {
+    self.player.update(delta);
+    _ = try self.maybeTick();
+}
+
 /// Run engine tick if enough time has passed
-pub fn maybeTick(self: *Game) !bool {
+fn maybeTick(self: *Game) !bool {
     const do_tick = self.shouldTick();
     if (do_tick)
         try self.tick();
     return do_tick;
 }
+
 /// Run engine tick
 fn tick(self: *Game) !void {
     // Update chunk models (TODO: do that more than once per tick, maybe once or more per frame)
     _ = try self.world.updateModel();
 
     if (self.client.is_connected) {
-        // Temporary thing so server considers us alive (TODO: actual physics)
-        self.last_plm.y_position -= 0.1;
-        self.last_plm.y_center_position -= 0.1;
-        if (self.last_plm.y_center_position < self.last_plm.y_position) {
-            const swap = self.last_plm.y_center_position;
-            self.last_plm.y_center_position = self.last_plm.y_position;
-            self.last_plm.y_position = swap;
-        }
-        self.client.enqueuePacket(self.last_plm);
+        const position_packet = self.player.makePositionPacket();
+        self.client.enqueuePacket(position_packet);
     }
 }
 
@@ -95,8 +94,12 @@ pub fn handlePacket(self: *Game, packet: net.InboundPacket) !void {
             // TODO: handle time
         },
         .player_look_move_13 => |plm| {
-            self.last_plm = plm;
-            self.window.setPlayerMarker(.{ .x = plm.x_position, .y = plm.y_position, .z = plm.z_position });
+            self.player.resetPosition(.{
+                .x = plm.x_position,
+                .y = plm.y_position,
+                .z = plm.z_position,
+            });
+            self.player.resetHeadAngle(plm.yaw, plm.pitch);
         },
         .animation_18 => |anim| {
             self.entities.get(anim.entity_id).?.startAnimation(anim.animation);
@@ -124,11 +127,13 @@ pub fn handlePacket(self: *Game, packet: net.InboundPacket) !void {
             //);
         },
         .mob_spawn_24 => |sp| {
-            try self.entities.addEntity(
+            self.entities.addEntity(
                 sp.entity_id,
                 .fromIntsDiv32(sp.x_position, sp.y_position, sp.z_position),
                 @enumFromInt(sp.entity_type),
-            );
+            ) catch |e| {
+                std.debug.print("Couldn't add entity {}, error {}\n", .{ sp.entity_id, e });
+            };
         },
         .destroy_entity_29 => |stroy| {
             try self.entities.removeEntity(stroy.entity_id);

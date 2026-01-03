@@ -107,6 +107,7 @@ pub fn doChunkMap(self: *World, x: i32, y: i16, z: i32, size_x: u8, size_y: u8, 
     }
 }
 
+/// Set a block ID at coordinates, fails if the chunk isn't loaded
 pub fn setBlockId(self: *World, pos: coord.Block, block_id: u8) !void {
     const chunk_pos = pos.getChunk();
     const chunk = self.getChunk(chunk_pos) orelse return error.ChunkNotLoaded;
@@ -161,6 +162,19 @@ pub fn updateModel(self: *World) !bool {
     } else {
         return false;
     }
+}
+
+/// Gets a block id at coordinates, returns 0 if the chunk isn't loaded
+pub fn getBlockId(self: *World, pos: coord.Block) u8 {
+    const chunk_pos = pos.getChunk();
+    const chunk = self.getChunk(chunk_pos) orelse return 0;
+    const pos_in_chunk = pos.getPosInChunk();
+
+    if (pos.y < 0 or pos.y >= 128)
+        return 0;
+
+    std.debug.assert(pos_in_chunk.isWithinChunk());
+    return chunk.getBlockId(pos_in_chunk);
 }
 
 /// Adds an empty chunk in the position(assumes it doesn't exist)

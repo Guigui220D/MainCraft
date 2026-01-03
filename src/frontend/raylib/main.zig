@@ -1,6 +1,7 @@
 //! Entry point of the frontend
 
 const std = @import("std");
+const rl = @import("raylib");
 const engine = @import("engine");
 
 const GameWindow = @import("GameWindow.zig");
@@ -17,15 +18,20 @@ pub fn main(default_alloc: std.mem.Allocator) !void {
     try client.init(alloc, &window, "localhost", 25565);
     defer client.deinit();
 
+    window.enterGame(&client.game);
+    defer window.exitGame();
+
     // TODO: make menus
     while (!window.hasClosed()) {
-        if (!try client.update())
+        const dt = rl.getFrameTime();
+
+        if (!try client.update(dt))
             break;
 
-        // TODO: whould should call that?
-        try window.update();
+        // TODO: who should call that?
+        try window.update(dt);
         window.beginDraw();
-        window.drawWorld(client.game.world, client.game.entities);
+        window.drawWorld();
         window.drawGui();
         window.endDraw();
     }

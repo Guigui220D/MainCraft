@@ -5,6 +5,8 @@ const BlockModel = @import("block_models.zig").BlockModel;
 
 const no_tex = 253;
 
+// TODO: bitfield to compact some flags
+
 tex_id: u8 = no_tex, // North
 // Optional: only when the uv type is not basic
 bottom_tex_id: u8 = no_tex,
@@ -21,3 +23,4 @@ full_block: bool = true,
 block_model: BlockModel = .full,
 // UV mapping method
 uv_type: UvType = .basic,
+hitbox: bool = true, // Later: enum

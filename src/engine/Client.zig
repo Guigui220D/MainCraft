@@ -68,7 +68,7 @@ pub fn init(client: *Client, alloc: std.mem.Allocator, window: *io.GameWindow, a
     client.is_connected = false;
 
     // Game state
-    client.game = try .init(alloc, client, window);
+    try client.game.init(alloc, client, window);
     errdefer client.game.deinit();
 
     // Running flag
@@ -140,7 +140,7 @@ pub fn deinit(self: *Client) void {
 // TODO: better logging
 
 /// Update the client
-pub fn update(self: *Client) !bool {
+pub fn update(self: *Client, delta: f32) !bool {
     if (self.server_running.load(.acquire)) {
         // Pop new packet
         while (self.in_queue.front()) |new_packet| {
@@ -176,8 +176,8 @@ pub fn update(self: *Client) !bool {
             self.server_running.store(false, .release);
         }
 
-        // Run game prototype so servers gives us the goods
-        _ = try self.game.maybeTick();
+        // Run game update
+        _ = try self.game.update(delta);
 
         return true;
     } else {
@@ -187,7 +187,9 @@ pub fn update(self: *Client) !bool {
 
 /// Adds a server-bound packet to the queue for sending
 pub fn enqueuePacket(self: *Client, packet: anytype) void {
-    if (!self.out_queue.tryPush(net.OutboundPacket.encapsulate(packet))) {
+    const pack = if (@TypeOf(packet) == net.OutboundPacket) packet else net.OutboundPacket.encapsulate(packet);
+
+    if (!self.out_queue.tryPush(pack)) {
         std.debug.print("Couldn't enqueue outbounds packet! Something is stuck...", .{});
         self.server_running.store(false, .release);
     }

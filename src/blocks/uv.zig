@@ -4,7 +4,7 @@ const std = @import("std");
 const io = @import("io");
 
 const blocks = @import("blocks.zig");
-const Context = @import("context.zig").Context;
+const Context = @import("terrain").Context;
 
 // The atlas has (atlas_size*atlas_size) textures
 pub const atlas_size = 16;
@@ -67,7 +67,7 @@ pub const UvType = enum {
 
 /// Write the right UV depending on the context and block id
 /// Assumes there is enough space left in the arraylist ((6 or 3) * face_count) depending of if using 2 tris or 1 quad per face
-pub fn writeUV(arraylist: *std.ArrayList(f32), context: Context, block_id: u8) void {
+pub fn writeUV(arraylist: *std.ArrayList(f32), context: Context.Occlusion, block_id: u8) void {
     const block = &blocks.table[block_id];
     switch (block.uv_type) {
         .basic => writeBasicUV(arraylist, context, block.tex_id),
@@ -79,61 +79,10 @@ pub fn writeUV(arraylist: *std.ArrayList(f32), context: Context, block_id: u8) v
     }
 }
 
-// TODO: based on biome
-const grass_color: u32 = 0xff44bb44;
-const foliage_color: u32 = 0xff449944;
-const default_color: u32 = 0xffffffff;
-
-/// Write the vertex colors depending on the context and block id
-pub fn writeColors(arraylist: *std.ArrayList(u32), context: Context, vertex_count: usize, block_id: u8) void {
-    switch (block_id) {
-        // TODO: way to get block ids by names
-        2 => { // Grass
-            if (!context.up) {
-                arraylist.appendNTimesAssumeCapacity(default_color, vertex_count);
-            } else {
-                if (context.north)
-                    arraylist.appendNTimesAssumeCapacity(default_color, 4);
-                if (context.east)
-                    arraylist.appendNTimesAssumeCapacity(default_color, 4);
-                if (context.south)
-                    arraylist.appendNTimesAssumeCapacity(default_color, 4);
-                if (context.west)
-                    arraylist.appendNTimesAssumeCapacity(default_color, 4);
-                // up
-                arraylist.appendNTimesAssumeCapacity(grass_color, 4);
-                if (context.down)
-                    arraylist.appendNTimesAssumeCapacity(default_color, 4);
-            }
-        },
-        18, 31 => { // Leaves, Tallgrass
-            arraylist.appendNTimesAssumeCapacity(foliage_color, vertex_count);
-        },
-        else => arraylist.appendNTimesAssumeCapacity(default_color, vertex_count),
-    }
-}
-
-/// Apply light level to color
-pub fn adjustColors(colors: []u8, blocklight: u4, skylight: u4) void {
-    for (colors, 0..) |*col, i| {
-        if (i % 4 == 3)
-            continue;
-
-        // TODO: no! this is per face not per block
-
-        const total_light = blocklight +| skylight;
-
-        var temp: u32 = col.*;
-        temp *= total_light;
-        temp /= 15;
-        col.* = @intCast(temp);
-    }
-}
-
 /// Write uv for the default basic scenario of blocks
-fn writeBasicUV(arraylist: *std.ArrayList(f32), context: Context, tex_id: u8) void {
+fn writeBasicUV(arraylist: *std.ArrayList(f32), context: Context.Occlusion, tex_id: u8) void {
     const face_count = context.faceCount();
-    const has_bottom = context.down;
+    const has_bottom = !context.down;
 
     var tex_coords = getTerrainUV(tex_id, false);
     for (0..(face_count - @intFromBool(has_bottom))) |_| {
@@ -148,70 +97,70 @@ fn writeBasicUV(arraylist: *std.ArrayList(f32), context: Context, tex_id: u8) vo
 }
 
 /// Write uv for barrel-like blocks
-fn writeBarrelUV(arraylist: *std.ArrayList(f32), context: Context, side_tex_id: u8, top_tex_id: u8, bottom_tex_id: u8) void {
+fn writeBarrelUV(arraylist: *std.ArrayList(f32), context: Context.Occlusion, side_tex_id: u8, top_tex_id: u8, bottom_tex_id: u8) void {
     const side_tex_coords = getTerrainUV(side_tex_id, false);
 
-    if (context.north)
+    if (!context.north)
         arraylist.appendSliceAssumeCapacity(&side_tex_coords);
-    if (context.east)
+    if (!context.east)
         arraylist.appendSliceAssumeCapacity(&side_tex_coords);
-    if (context.south)
+    if (!context.south)
         arraylist.appendSliceAssumeCapacity(&side_tex_coords);
-    if (context.west)
+    if (!context.west)
         arraylist.appendSliceAssumeCapacity(&side_tex_coords);
-    if (context.up) {
+    if (!context.up) {
         const top_tex_coords = getTerrainUV(top_tex_id, false);
         arraylist.appendSliceAssumeCapacity(&top_tex_coords);
     }
-    if (context.down) {
+    if (!context.down) {
         const bottom_tex_coords = getTerrainUV(bottom_tex_id, true);
         arraylist.appendSliceAssumeCapacity(&bottom_tex_coords);
     }
 }
 
 /// Write uv for barrel-like blocks
-fn writeAdvancedUV(arraylist: *std.ArrayList(f32), context: Context, north_tex_id: u8, east_tex_id: u8, south_tex_id: u8, west_tex_id: u8, top_tex_id: u8, bottom_tex_id: u8) void {
-    if (context.north) {
+fn writeAdvancedUV(arraylist: *std.ArrayList(f32), context: Context.Occlusion, north_tex_id: u8, east_tex_id: u8, south_tex_id: u8, west_tex_id: u8, top_tex_id: u8, bottom_tex_id: u8) void {
+    if (!context.north) {
         const tex_coords = getTerrainUV(north_tex_id, false);
         arraylist.appendSliceAssumeCapacity(&tex_coords);
     }
-    if (context.east) {
+    if (!context.east) {
         const tex_coords = getTerrainUV(east_tex_id, false);
         arraylist.appendSliceAssumeCapacity(&tex_coords);
     }
-    if (context.south) {
+    if (!context.south) {
         const tex_coords = getTerrainUV(south_tex_id, false);
         arraylist.appendSliceAssumeCapacity(&tex_coords);
     }
-    if (context.west) {
+    if (!context.west) {
         const tex_coords = getTerrainUV(west_tex_id, false);
         arraylist.appendSliceAssumeCapacity(&tex_coords);
     }
-    if (context.up) {
+    if (!context.up) {
         const tex_coords = getTerrainUV(top_tex_id, false);
         arraylist.appendSliceAssumeCapacity(&tex_coords);
     }
-    if (context.down) {
+    if (!context.down) {
         const tex_coords = getTerrainUV(bottom_tex_id, true);
         arraylist.appendSliceAssumeCapacity(&tex_coords);
     }
 }
 
 /// Write uv for slabs (barrel-like)
-fn writeSlabUV(arraylist: *std.ArrayList(f32), context: Context, side_tex_id: u8, top_tex_id: u8, bottom_tex_id: u8) void {
+fn writeSlabUV(arraylist: *std.ArrayList(f32), context: Context.Occlusion, side_tex_id: u8, top_tex_id: u8, bottom_tex_id: u8) void {
     const side_tex_coords = getSlabUV(side_tex_id, false);
 
-    if (context.north)
+    if (!context.north)
         arraylist.appendSliceAssumeCapacity(&side_tex_coords);
-    if (context.east)
+    if (!context.east)
         arraylist.appendSliceAssumeCapacity(&side_tex_coords);
-    if (context.south)
+    if (!context.south)
         arraylist.appendSliceAssumeCapacity(&side_tex_coords);
-    if (context.west)
+    if (!context.west)
         arraylist.appendSliceAssumeCapacity(&side_tex_coords);
     const top_tex_coords = getTerrainUV(top_tex_id, false);
     arraylist.appendSliceAssumeCapacity(&top_tex_coords);
-    if (context.down) {
+    if (!context.down) {
         const bottom_tex_coords = getTerrainUV(bottom_tex_id, true);
         arraylist.appendSliceAssumeCapacity(&bottom_tex_coords);
     }

@@ -5,8 +5,10 @@ const coord = @import("coord");
 const io = @import("io");
 const blocks = @import("blocks");
 const tracy = @import("tracy");
-
+const LightLevel = @import("light_level.zig").LightLevel;
 const World = @import("World.zig");
+const Context = @import("Context.zig");
+
 const Chunk = @This();
 
 pub const width = 16;
@@ -200,29 +202,49 @@ pub fn setBlockId(self: *Chunk, pos: coord.Block, block_id: u8) void {
     self.blocks_data[index] = block_id;
 }
 
-/// Get block block-lighting level
-pub fn getBlockLight(self: Chunk, pos: coord.Block) u4 {
+/// Get block lighting levels
+pub fn getLight(self: Chunk, pos: coord.Block) LightLevel {
     if (!pos.isWithinChunk())
-        return 0;
+        return .{ .blocklight = 0, .skylight = 15 };
+
     const index = indexFromCoord(pos);
-    const val = self.blocklight[index / 2];
+    const blocklight = self.blocklight[index / 2];
+    const skylight = self.skylight[index / 2];
     if (index % 2 == 0) {
-        return @intCast(val & 0x0f);
+        return .{
+            .blocklight = @intCast(blocklight & 0x0f),
+            .skylight = @intCast(skylight & 0x0f),
+        };
     } else {
-        return @intCast((val & 0xf0) >> 4);
+        return .{
+            .blocklight = @intCast((blocklight & 0xf0) >> 4),
+            .skylight = @intCast((skylight & 0xf0) >> 4),
+        };
     }
 }
 
-/// Get block sky-lighting level
-pub fn getSkyLight(self: Chunk, pos: coord.Block) u4 {
-    if (!pos.isWithinChunk())
-        return 0;
-    const index = indexFromCoord(pos);
-    const val = self.skylight[index / 2];
-    if (index % 2 == 0) {
-        return @intCast(val & 0x0f);
+/// Get block lighting levels within the chunk, or from a neighbor chunk, transcending chunk boundaries
+/// If the coordinates are for a neighbor that isn't loaded, this returns a default value
+/// The position is in the chunk's coordiante space within, not global coordinates
+pub fn getLightTranscend(self: Chunk, pos: coord.Block) LightLevel {
+    if (pos.isWithinChunk()) {
+        // Local block
+        return self.getLight(pos);
     } else {
-        return @intCast((val & 0xf0) >> 4);
+        // Neighbor block
+        // Relative chunk position
+        const chunk_rel = pos.getChunk();
+        // TODO: vector math helpers for concise code
+        var other_chunk_pos = self.coords;
+        other_chunk_pos.x += chunk_rel.x;
+        other_chunk_pos.z += chunk_rel.z;
+
+        if (self.world.getChunk(other_chunk_pos)) |other_chunk| {
+            return other_chunk.getLight(pos.getPosInChunk());
+        } else {
+            // Neigbor not loaded
+            return .{ .blocklight = 0, .skylight = 15 };
+        }
     }
 }
 
@@ -239,21 +261,32 @@ pub fn getBlockMeta(self: Chunk, pos: coord.Block) u4 {
     }
 }
 
-pub fn getContext(self: Chunk, pos: coord.Block) blocks.Context {
+pub fn getContext(self: Chunk, pos: coord.Block) Context {
     const block_n = blocks.table[getBlockIdTranscend(self, pos.neighbor(.north))];
     const block_e = blocks.table[getBlockIdTranscend(self, pos.neighbor(.east))];
     const block_s = blocks.table[getBlockIdTranscend(self, pos.neighbor(.south))];
     const block_w = blocks.table[getBlockIdTranscend(self, pos.neighbor(.west))];
-    const block_u = blocks.table[getBlockIdTranscend(self, pos.neighbor(.up))];
-    const block_d = blocks.table[getBlockIdTranscend(self, pos.neighbor(.down))];
+    const block_u = blocks.table[getBlockId(self, pos.neighbor(.up))];
+    const block_d = blocks.table[getBlockId(self, pos.neighbor(.down))];
 
     return .{
-        .north = !block_n.full_block or block_n.transparent,
-        .east = !block_e.full_block or block_e.transparent,
-        .south = !block_s.full_block or block_s.transparent,
-        .west = !block_w.full_block or block_w.transparent,
-        .up = !block_u.full_block or block_u.transparent,
-        .down = !block_d.full_block or block_d.transparent,
+        .light_levels = .{
+            .self = self.getLight(pos),
+            .north = self.getLightTranscend(pos.neighbor(.north)),
+            .east = self.getLightTranscend(pos.neighbor(.east)),
+            .south = self.getLightTranscend(pos.neighbor(.south)),
+            .west = self.getLightTranscend(pos.neighbor(.west)),
+            .up = self.getLight(pos.neighbor(.up)),
+            .down = self.getLight(pos.neighbor(.down)),
+        },
+        .occlusion = .{
+            .north = block_n.full_block and !block_n.transparent,
+            .east = block_e.full_block and !block_e.transparent,
+            .south = block_s.full_block and !block_s.transparent,
+            .west = block_w.full_block and !block_w.transparent,
+            .up = block_u.full_block and !block_u.transparent,
+            .down = block_d.full_block and !block_d.transparent,
+        },
     };
 }
 

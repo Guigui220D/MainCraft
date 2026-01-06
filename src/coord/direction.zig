@@ -7,6 +7,7 @@ pub const Direction = enum {
     west, // -X
     up, // +Y
     down, // -Y
+    self, // same
 
     pub inline fn asRelativeBlock(self: Direction) Block {
         return switch (self) {
@@ -16,6 +17,7 @@ pub const Direction = enum {
             .west => .{ .x = -1, .y = 0, .z = 0 },
             .up => .{ .x = 0, .y = 1, .z = 0 },
             .down => .{ .x = 0, .y = -1, .z = 0 },
+            .self => .{ .x = 0, .y = 0, .z = 0 },
         };
     }
 };

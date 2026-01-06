@@ -206,6 +206,7 @@ fn generateSingleMesh(alloc: std.mem.Allocator, chunk: Chunk, offset: *usize, tr
             break;
 
         // Add vertices
+        // TODO: ensure unused capacity?
         blocks.models.writeVertices(&vertices, block.block_model, xyz, context.occlusion);
 
         // Add triangles
@@ -216,9 +217,8 @@ fn generateSingleMesh(alloc: std.mem.Allocator, chunk: Chunk, offset: *usize, tr
         try colors.ensureUnusedCapacity(rl.mem, vertex_count);
         blocks.coloring.writeColors(&colors, context.occlusion, vertex_count, block_id);
         blocks.coloring.adjustColors(
-            @ptrCast(colors.items[(colors.items.len - vertex_count)..(colors.items.len)]),
-            context.light_levels.up.blocklight, // TODO: this argument won't be used later, only light levels
-            context.light_levels.up.skylight,
+            @ptrCast(colors.items[(colors.items.len - vertex_count)..]),
+            vertices.items[(vertices.items.len - (vertex_count * 3))..],
             context,
         );
 

@@ -1,11 +1,27 @@
 //! Context data passed when generating block models
 
+const Direction = @import("coord").Direction;
+
 const LightLevel = @import("light_level.zig").LightLevel;
+
+const Context = @This();
 
 /// Occlusion
 occlusion: Occlusion,
 /// Surrounding light levels
 light_levels: LightLevels,
+
+pub fn getLight(self: Context, dir: Direction) LightLevel {
+    return switch (dir) {
+        .self => self.light_levels.self,
+        .north => self.light_levels.north,
+        .east => self.light_levels.east,
+        .south => self.light_levels.south,
+        .west => self.light_levels.west,
+        .up => self.light_levels.up,
+        .down => self.light_levels.down,
+    };
+}
 
 /// Light levels of the surrounding blocks
 pub const LightLevels = packed struct {

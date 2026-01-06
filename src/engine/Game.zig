@@ -144,7 +144,8 @@ pub fn handlePacket(self: *Game, packet: net.InboundPacket) !void {
             self.entities.addEntity(
                 sp.entity_id,
                 .fromIntsDiv32(sp.x_position, sp.y_position, sp.z_position),
-                @enumFromInt(sp.entity_type),
+                //@enumFromInt(sp.entity_type),
+                .pig, // Before I fix it
             ) catch |e| {
                 std.debug.print("Couldn't add entity {}, error {}\n", .{ sp.entity_id, e });
             };

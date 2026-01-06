@@ -144,7 +144,7 @@ pub fn handlePacket(self: *Game, packet: net.InboundPacket) !void {
             self.entities.addEntity(
                 sp.entity_id,
                 .fromIntsDiv32(sp.x_position, sp.y_position, sp.z_position),
-                @enumFromInt(sp.entity_type),
+                .pig,
             ) catch |e| {
                 std.debug.print("Couldn't add entity {}, error {}\n", .{ sp.entity_id, e });
             };
@@ -182,11 +182,20 @@ pub fn handlePacket(self: *Game, packet: net.InboundPacket) !void {
                 mc.data,
             );
         },
+        .multi_block_change_52 => |mbc| {
+            try self.world.doMultiBlockChange(
+                .{ .x = mbc.x_position, .z = mbc.z_position },
+                mbc.coord_array,
+                mbc.block_ids,
+                mbc.block_metas,
+            );
+        },
         .block_change_53 => |bc| {
             try self.world.setBlockId(
                 .{ .x = bc.x_position, .y = bc.y_position, .z = bc.z_position },
                 bc.block_id,
             );
+            // TODO: use meta
         },
         inline else => |pack| {
             if (!@hasDecl(@TypeOf(pack), "do_not_print"))

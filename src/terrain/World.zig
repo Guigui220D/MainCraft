@@ -44,8 +44,6 @@ pub fn doPreChunk(self: *World, coords: coord.Chunk, add: bool) !void {
 
 /// Take block data and apply it to chunks
 pub fn doChunkMap(self: *World, x: i32, y: i16, z: i32, size_x: u8, size_y: u8, size_z: u8, data: []const u8) !void {
-    // TODO: initialize chunks or not if they weren't added?
-
     // Tracking data left to read
     var remaining = data;
 
@@ -73,14 +71,8 @@ pub fn doChunkMap(self: *World, x: i32, y: i16, z: i32, size_x: u8, size_y: u8, 
 
             const coords = coord.Chunk{ .x = chunk_x, .z = chunk_z };
 
-            // Chunk must exist
-            if (!self.chunk_list.contains(coords)) {
-                try self.addChunk(coords);
-                std.debug.print("Warning: Chunk didn't get prepared?\n", .{});
-            }
-
             // Apply modifications to selected chunk
-            const chunk = self.getChunk(coords).?;
+            const chunk = self.getChunk(coords) orelse return error.ChunkNotLoaded;
             remaining = chunk.setChunkData(remaining, x1, y1, z1, x2, y2, z2);
 
             // Update own model
@@ -103,7 +95,68 @@ pub fn doChunkMap(self: *World, x: i32, y: i16, z: i32, size_x: u8, size_y: u8, 
                 if (self.getChunk(.{ .x = chunk_x, .z = chunk_z + 1 })) |neighbor|
                     neighbor.markDirtiness(&self.dirty_priority_counter);
             }
+
+            // TODO: when doing multithreading : maybe add a mutex for dirtiness?
+            // Because on one chunk map or multiblock change we might make dirtyness
+            // several times, which may cause superfluous chunk remodeling
         }
+    }
+}
+
+/// Change multiple blocks
+pub fn doMultiBlockChange(self: *World, chunk_pos: coord.Chunk, coord_array: []i16, block_ids: []u8, block_metas: []u8) !void {
+    // Apply modifications to selected chunk
+    const chunk = self.getChunk(chunk_pos) orelse return error.ChunkNotLoaded;
+
+    // Update own model
+    chunk.markDirtiness(&self.dirty_priority_counter);
+
+    var north_dirty = false;
+    var east_dirty = false;
+    var south_dirty = false;
+    var west_dirty = false;
+
+    for (coord_array, block_ids, block_metas) |pos, block_id, block_meta| {
+        const xyz = coord.Block{
+            .x = pos >> 12 & 15,
+            .y = pos & 255,
+            .z = pos >> 8 & 15,
+        };
+
+        // Update neighbors if needed
+        if (xyz.x == 0) {
+            west_dirty = true;
+        } else if (xyz.x == 15) {
+            east_dirty = true;
+        }
+
+        if (xyz.z == 0) {
+            north_dirty = true;
+        } else if (xyz.z == 15) {
+            south_dirty = true;
+        }
+
+        // TODO: use metadata
+        _ = block_meta;
+        chunk.setBlockId(xyz, block_id);
+    }
+
+    // Update neighbors if needed
+    if (west_dirty) {
+        if (self.getChunk(.{ .x = chunk_pos.x - 1, .z = chunk_pos.z })) |neighbor|
+            neighbor.markDirtiness(&self.dirty_priority_counter);
+    }
+    if (east_dirty) {
+        if (self.getChunk(.{ .x = chunk_pos.x + 1, .z = chunk_pos.z })) |neighbor|
+            neighbor.markDirtiness(&self.dirty_priority_counter);
+    }
+    if (north_dirty) {
+        if (self.getChunk(.{ .x = chunk_pos.x, .z = chunk_pos.z - 1 })) |neighbor|
+            neighbor.markDirtiness(&self.dirty_priority_counter);
+    }
+    if (south_dirty) {
+        if (self.getChunk(.{ .x = chunk_pos.x, .z = chunk_pos.z + 1 })) |neighbor|
+            neighbor.markDirtiness(&self.dirty_priority_counter);
     }
 }
 

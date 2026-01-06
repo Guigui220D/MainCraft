@@ -22,8 +22,6 @@ pub fn readString(stream: *std.Io.Reader, alloc: std.mem.Allocator, max_length: 
     return utf8;
 }
 
-// TODO: read string fast
-
 /// Discards a string (length + utf16 bytes)
 /// Used when a string field is unused or useless
 pub fn discardString(stream: *std.Io.Reader, max_length: u16) !void {
@@ -86,7 +84,7 @@ fn encodeDecodeTest(string: []const u8, comptime is_ascii: bool) !void {
     }
 
     // TODO: is this the right way to access the fixed writer string?
-    var reader = std.Io.Reader.fixed(buf[0..writer.end]);
+    var reader = std.Io.Reader.fixed(writer.buffered());
     // Read back
     const result = try readString(&reader, alloc, 128);
     defer alloc.free(result);

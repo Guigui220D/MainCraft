@@ -9,17 +9,16 @@
 - [ ] Abstraction layer on socket to allow changing networking lib
 - [ ] Inventories and items engine support
 - [ ] Inventories and items rendering API in I/O
-- [ ] Player controls
 - [ ] Menus
 - [ ] Setting blocks
-- [ ] Chunk metadata
-- [ ] Lighting engine
 - [ ] Weather, time
 - [ ] Clearly define I/O role and API
+- [ ] Polish player controls 
+- [ ] Atmosphere and time-dependant sky lighting
+- [ ] Move shaders and raylib-specific ressources to raylib module
 
 ## Raylib I/O
 
 - [ ] Entity ressources and rendering
 - [ ] Inventories and items rendering
 - [ ] Ambient occlusion
-- [ ] Mesh coloring

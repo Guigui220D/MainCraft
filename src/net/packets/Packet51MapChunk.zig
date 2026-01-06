@@ -35,7 +35,7 @@ pub fn receive(alloc: std.mem.Allocator, stream: *std.Io.Reader) !@This() {
 
     // Init flate decompressor, and flush it all
     var decomp = std.compress.flate.Decompress.init(&buf_reader, .zlib, &.{});
-    ret.data = try decomp.reader.allocRemaining(alloc, .unlimited); // TODO: surely there should be a limit? Figure out what should be the limit based on chunk sizes
+    ret.data = try decomp.reader.allocRemaining(alloc, .unlimited);
     errdefer alloc.free(ret.data);
 
     return ret;

@@ -11,8 +11,6 @@ z_position: i8,
 yaw: i8,
 pitch: i8,
 
-// TODO: this is normally backed by packet30 entity, setting the rotating=true flag, should I do the same?
-
 pub fn receive(_: std.mem.Allocator, stream: *std.Io.Reader) !@This() {
     return .{
         .entity_id = try stream.takeInt(i32, net.endianness),

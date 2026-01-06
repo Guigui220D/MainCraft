@@ -16,10 +16,8 @@ const jumping_acc = 0.42;
 const gravity = 0.08;
 
 // TODO for player movement:
-// proper falling speed with acceleration
 // blocks pushing against instead of cancelling movement
-// jumping
-// On ground detection
+// proper on ground detection
 
 /// Reference to the game
 game: *Game,
@@ -233,8 +231,6 @@ pub fn makePositionPacket(self: *Player) net.server_bound.OutboundPacket {
         self.last_pitch = self.pitch;
         self.last_yaw = self.yaw;
     }
-
-    // TODO: send actual on ground
 
     if (did_move) {
         if (did_turn) {

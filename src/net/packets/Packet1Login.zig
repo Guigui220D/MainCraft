@@ -4,7 +4,6 @@ const std = @import("std");
 const net = @import("../net.zig");
 const string = @import("../string.zig");
 
-// TODO: how to handle different data meaning when sending vs receiving?
 entity_id: i32 = 0, // unused when serverbound
 username: []const u8, // unused when clientbound
 map_seed: i64 = 0, // unused when serverbound

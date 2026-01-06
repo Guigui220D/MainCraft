@@ -103,7 +103,6 @@ pub fn deinit(self: ChunkModel, alloc: std.mem.Allocator) void {
 /// Renders a chunk into a mesh
 fn generateMeshesForChunk(alloc: std.mem.Allocator, chunk: Chunk) !struct { []rl.Mesh, []rl.Mesh } {
     // Meshes arraylist
-    // TODO: find out worst case to pre-alloc
     var meshes: std.ArrayList(rl.Mesh) = .{};
     var transparent_meshes: std.ArrayList(rl.Mesh) = .{};
     errdefer {
@@ -141,10 +140,16 @@ fn generateMeshesForChunk(alloc: std.mem.Allocator, chunk: Chunk) !struct { []rl
         try transparent_meshes.append(alloc, mesh);
     }
 
-    // TODO: good errdefer
+    // Owned arrays
+    const owned_meshes = try meshes.toOwnedSlice(alloc);
+    errdefer alloc.free(owned_meshes);
+
+    const owned_transparent_meshes = try transparent_meshes.toOwnedSlice(alloc);
+    errdefer alloc.free(owned_transparent_meshes);
+
     return .{
-        try meshes.toOwnedSlice(alloc),
-        try transparent_meshes.toOwnedSlice(alloc),
+        owned_meshes,
+        owned_transparent_meshes,
     };
 }
 
@@ -206,11 +211,11 @@ fn generateSingleMesh(alloc: std.mem.Allocator, chunk: Chunk, offset: *usize, tr
             break;
 
         // Add vertices
-        // TODO: ensure unused capacity?
+        try vertices.ensureUnusedCapacity(rl.mem, vertex_count);
         blocks.models.writeVertices(&vertices, block.block_model, xyz, context.occlusion);
 
         // Add triangles
-        try indices.ensureUnusedCapacity(rl.mem, face_count * 6); // TODO: more elegant way to get these numbers
+        try indices.ensureUnusedCapacity(rl.mem, face_count * 6);
         blocks.models.materializeFaces(&indices, face_count, next_id, false);
 
         // Colors (later based on chunk lighting)

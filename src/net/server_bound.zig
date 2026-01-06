@@ -28,7 +28,7 @@ pub const OutboundPacket = union(Packets) {
                 }
             },
         }
-        // TODO: should this be done here?
+
         try stream.flush();
     }
 

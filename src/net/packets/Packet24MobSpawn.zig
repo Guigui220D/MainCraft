@@ -2,7 +2,7 @@
 
 const std = @import("std");
 const net = @import("../net.zig");
-const data_watcher = @import("data_watcher");
+const WatchableObject = @import("entities").WatchableObject;
 const wo_reader = @import("../readers/watchable_objects.zig");
 
 entity_id: i32,
@@ -12,7 +12,7 @@ y_position: i32,
 z_position: i32,
 yaw: i8,
 pitch: i8,
-metadata: []data_watcher.WatchableObject,
+metadata: []WatchableObject,
 
 pub fn receive(alloc: std.mem.Allocator, stream: *std.Io.Reader) !@This() {
     return .{
@@ -28,7 +28,7 @@ pub fn receive(alloc: std.mem.Allocator, stream: *std.Io.Reader) !@This() {
 }
 
 pub fn deinit(self: @This(), alloc: std.mem.Allocator) void {
-    data_watcher.freeWatchableObjects(self.metadata, alloc);
+    WatchableObject.free(self.metadata, alloc);
 }
 
 pub const tag = net.Packets.mob_spawn_24;

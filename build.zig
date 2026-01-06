@@ -51,14 +51,6 @@ pub fn build(b: *std.Build) void {
         .target = target,
     });
 
-    const dw_mod = b.addModule("data_watcher", .{
-        .root_source_file = b.path("src/data_watcher/data_watcher.zig"),
-        .target = target,
-        .imports = &.{
-            .{ .name = "inventory", .module = inv_mod },
-        },
-    });
-
     const terrain_mod = b.addModule("terrain", .{
         .root_source_file = b.path("src/terrain/terrain.zig"),
         .target = target,
@@ -83,6 +75,7 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .imports = &.{
             .{ .name = "coord", .module = coord_mod },
+            .{ .name = "inventory", .module = inv_mod },
         },
     });
 
@@ -118,10 +111,10 @@ pub fn build(b: *std.Build) void {
         .root_source_file = b.path("src/net/net.zig"),
         .target = target,
         .imports = &.{
-            .{ .name = "data_watcher", .module = dw_mod },
             .{ .name = "inventory", .module = inv_mod },
         },
     });
+    net_mod.addImport("entities", entities_mod);
 
     const engine_mod = b.addModule("engine", .{
         .root_source_file = b.path("src/engine/engine.zig"),
@@ -129,7 +122,6 @@ pub fn build(b: *std.Build) void {
         .imports = &.{
             // Internal
             .{ .name = "net", .module = net_mod },
-            .{ .name = "data_watcher", .module = dw_mod },
             .{ .name = "inventory", .module = inv_mod },
             .{ .name = "io", .module = io_mod },
             .{ .name = "coord", .module = coord_mod },
@@ -195,11 +187,6 @@ pub fn build(b: *std.Build) void {
     });
     const run_inv_tests = b.addRunArtifact(inv_mod_tests);
 
-    const dw_mod_tests = b.addTest(.{
-        .root_module = dw_mod,
-    });
-    const run_dw_tests = b.addRunArtifact(dw_mod_tests);
-
     const io_mod_tests = b.addTest(.{
         .root_module = io_mod,
     });
@@ -241,7 +228,6 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_nbt_tests.step);
     test_step.dependOn(&run_net_tests.step);
     test_step.dependOn(&run_inv_tests.step);
-    test_step.dependOn(&run_dw_tests.step);
     test_step.dependOn(&run_io_tests.step);
     test_step.dependOn(&run_coord_tests.step);
     test_step.dependOn(&run_terrain_tests.step);
@@ -254,7 +240,6 @@ pub fn build(b: *std.Build) void {
     b.step("test_nbt", "Run NBT module tests").dependOn(&run_nbt_tests.step);
     b.step("test_net", "Run net module tests").dependOn(&run_net_tests.step);
     b.step("test_inv", "Run inventory module tests").dependOn(&run_inv_tests.step);
-    b.step("test_dw", "Run data watcher module tests").dependOn(&run_dw_tests.step);
     b.step("test_io", "Run game i/o module tests").dependOn(&run_io_tests.step);
     b.step("test_coord", "Run coordinates module tests").dependOn(&run_coord_tests.step);
     b.step("test_terrain", "Run terrain module tests").dependOn(&run_terrain_tests.step);

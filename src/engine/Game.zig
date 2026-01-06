@@ -192,11 +192,11 @@ pub fn handlePacket(self: *Game, packet: net.InboundPacket) !void {
             );
         },
         .block_change_53 => |bc| {
-            try self.world.setBlockId(
+            try self.world.setBlockIdAndMetadata(
                 .{ .x = bc.x_position, .y = bc.y_position, .z = bc.z_position },
                 bc.block_id,
+                @truncate(bc.block_meta),
             );
-            // TODO: use meta
         },
         inline else => |pack| {
             if (!@hasDecl(@TypeOf(pack), "do_not_print"))

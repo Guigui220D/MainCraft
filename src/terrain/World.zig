@@ -99,6 +99,7 @@ pub fn doChunkMap(self: *World, x: i32, y: i16, z: i32, size_x: u8, size_y: u8, 
             // TODO: when doing multithreading : maybe add a mutex for dirtiness?
             // Because on one chunk map or multiblock change we might make dirtyness
             // several times, which may cause superfluous chunk remodeling
+            // Also take in account order (so a mutex probably is good)
         }
     }
 }
@@ -107,9 +108,6 @@ pub fn doChunkMap(self: *World, x: i32, y: i16, z: i32, size_x: u8, size_y: u8, 
 pub fn doMultiBlockChange(self: *World, chunk_pos: coord.Chunk, coord_array: []i16, block_ids: []u8, block_metas: []u8) !void {
     // Apply modifications to selected chunk
     const chunk = self.getChunk(chunk_pos) orelse return error.ChunkNotLoaded;
-
-    // Update own model
-    chunk.markDirtiness(&self.dirty_priority_counter);
 
     var north_dirty = false;
     var east_dirty = false;
@@ -136,10 +134,11 @@ pub fn doMultiBlockChange(self: *World, chunk_pos: coord.Chunk, coord_array: []i
             south_dirty = true;
         }
 
-        // TODO: use metadata
-        _ = block_meta;
-        chunk.setBlockId(xyz, block_id);
+        chunk.setBlockIdAndMetadata(xyz, block_id, @truncate(block_meta));
     }
+
+    // Update own model
+    chunk.markDirtiness(&self.dirty_priority_counter);
 
     // Update neighbors if needed
     if (west_dirty) {
@@ -161,14 +160,14 @@ pub fn doMultiBlockChange(self: *World, chunk_pos: coord.Chunk, coord_array: []i
 }
 
 /// Set a block ID at coordinates, fails if the chunk isn't loaded
-pub fn setBlockId(self: *World, pos: coord.Block, block_id: u8) !void {
+pub fn setBlockIdAndMetadata(self: *World, pos: coord.Block, block_id: u8, block_meta: u4) !void {
     const chunk_pos = pos.getChunk();
     const chunk = self.getChunk(chunk_pos) orelse return error.ChunkNotLoaded;
     const pos_in_chunk = pos.getPosInChunk();
 
     std.debug.assert(pos_in_chunk.isWithinChunk());
 
-    chunk.setBlockId(pos_in_chunk, block_id);
+    chunk.setBlockIdAndMetadata(pos_in_chunk, block_id, block_meta);
 
     // Update own model
     chunk.markDirtiness(&self.dirty_priority_counter);

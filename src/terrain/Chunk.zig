@@ -195,11 +195,23 @@ pub fn getBlockIdTranscend(self: Chunk, pos: coord.Block) u8 {
     }
 }
 
-pub fn setBlockId(self: *Chunk, pos: coord.Block, block_id: u8) void {
+/// Set a block ID and metadat within the chunk
+pub fn setBlockIdAndMetadata(self: *Chunk, pos: coord.Block, block_id: u8, block_meta: u4) void {
     std.debug.assert(pos.isWithinChunk());
 
     const index = indexFromCoord(pos);
+
     self.blocks_data[index] = block_id;
+
+    var meta = self.metadata[index / 2];
+    if (index % 2 == 0) {
+        meta &= 0x0f;
+        meta |= @as(u8, block_meta) << 4;
+    } else {
+        meta &= 0xf0;
+        meta |= @as(u8, block_meta);
+    }
+    self.metadata[index / 2] = meta;
 }
 
 /// Get block lighting levels

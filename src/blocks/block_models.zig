@@ -7,7 +7,7 @@ const io = @import("io");
 const VertexIdT = io.properties.VertexIdT;
 
 const uv = @import("uv.zig");
-const Context = @import("context.zig").Context;
+const Context = @import("terrain").Context;
 
 /// Enumeration of all block models
 pub const BlockModel = enum {
@@ -19,12 +19,12 @@ pub const BlockModel = enum {
 };
 
 /// Returns the number of vertices the block will use in that specific context
-pub inline fn vertexCount(model: BlockModel, context: Context) usize {
+pub inline fn vertexCount(model: BlockModel, context: Context.Occlusion) usize {
     return faceCount(model, context) * 4;
 }
 
 /// Returns the number of faces the block will use in that specific context
-pub inline fn faceCount(model: BlockModel, context: Context) usize {
+pub inline fn faceCount(model: BlockModel, context: Context.Occlusion) usize {
     return switch (model) {
         .full => context.faceCount(),
         .slab => slabFaceCount(context),
@@ -36,7 +36,7 @@ pub inline fn faceCount(model: BlockModel, context: Context) usize {
 /// Writes the vertices of the selected model in the given context
 /// The amount of vertices written is equal to the vertexCount() of the same model and context
 /// Assumes there is enough space left in the arraylist
-pub inline fn writeVertices(arraylist: *std.ArrayList(f32), model: BlockModel, coords: coord.Block, context: Context) void {
+pub inline fn writeVertices(arraylist: *std.ArrayList(f32), model: BlockModel, coords: coord.Block, context: Context.Occlusion) void {
     const x = coords.x;
     const y = coords.y;
     const z = coords.z;
@@ -75,49 +75,49 @@ pub fn materializeFaces(arraylist: *std.ArrayList(VertexIdT), face_count: Vertex
     }
 }
 
-fn writeCubeVertices(arraylist: *std.ArrayList(f32), x: i32, y: i32, z: i32, context: Context) void {
+fn writeCubeVertices(arraylist: *std.ArrayList(f32), x: i32, y: i32, z: i32, context: Context.Occlusion) void {
     const x1: f32 = @floatFromInt(x + 0);
     const x2: f32 = @floatFromInt(x + 1);
     const y1: f32 = @floatFromInt(y + 0);
     const y2: f32 = @floatFromInt(y + 1);
     const z1: f32 = @floatFromInt(z + 0);
     const z2: f32 = @floatFromInt(z + 1);
-    if (context.north)
+    if (!context.north)
         arraylist.appendSliceAssumeCapacity(&.{
             x1, y1, z1,
             x2, y1, z1,
             x2, y2, z1,
             x1, y2, z1,
         });
-    if (context.east)
+    if (!context.east)
         arraylist.appendSliceAssumeCapacity(&.{
             x2, y1, z1,
             x2, y1, z2,
             x2, y2, z2,
             x2, y2, z1,
         });
-    if (context.south)
+    if (!context.south)
         arraylist.appendSliceAssumeCapacity(&.{
             x2, y1, z2,
             x1, y1, z2,
             x1, y2, z2,
             x2, y2, z2,
         });
-    if (context.west)
+    if (!context.west)
         arraylist.appendSliceAssumeCapacity(&.{
             x1, y1, z2,
             x1, y1, z1,
             x1, y2, z1,
             x1, y2, z2,
         });
-    if (context.up)
+    if (!context.up)
         arraylist.appendSliceAssumeCapacity(&.{
             x2, y2, z2,
             x1, y2, z2,
             x1, y2, z1,
             x2, y2, z1,
         });
-    if (context.down)
+    if (!context.down)
         arraylist.appendSliceAssumeCapacity(&.{
             x1, y1, z2,
             x2, y1, z2,
@@ -126,49 +126,49 @@ fn writeCubeVertices(arraylist: *std.ArrayList(f32), x: i32, y: i32, z: i32, con
         });
 }
 
-fn writeSlabVertices(arraylist: *std.ArrayList(f32), x: i32, y: i32, z: i32, context: Context) void {
+fn writeSlabVertices(arraylist: *std.ArrayList(f32), x: i32, y: i32, z: i32, context: Context.Occlusion) void {
     const x1: f32 = @floatFromInt(x + 0);
     const x2: f32 = @floatFromInt(x + 1);
     const y1: f32 = @floatFromInt(y + 0);
     const y2: f32 = @as(f32, @floatFromInt(y)) + 0.5;
     const z1: f32 = @floatFromInt(z + 0);
     const z2: f32 = @floatFromInt(z + 1);
-    if (context.north)
+    if (!context.north)
         arraylist.appendSliceAssumeCapacity(&.{
             x1, y1, z1,
             x2, y1, z1,
             x2, y2, z1,
             x1, y2, z1,
         });
-    if (context.east)
+    if (!context.east)
         arraylist.appendSliceAssumeCapacity(&.{
             x2, y1, z1,
             x2, y1, z2,
             x2, y2, z2,
             x2, y2, z1,
         });
-    if (context.south)
+    if (!context.south)
         arraylist.appendSliceAssumeCapacity(&.{
             x2, y1, z2,
             x1, y1, z2,
             x1, y2, z2,
             x2, y2, z2,
         });
-    if (context.west)
+    if (!context.west)
         arraylist.appendSliceAssumeCapacity(&.{
             x1, y1, z2,
             x1, y1, z1,
             x1, y2, z1,
             x1, y2, z2,
         });
-    // if (context.up)
+    // if (!context.up)
     arraylist.appendSliceAssumeCapacity(&.{
         x2, y2, z2,
         x1, y2, z2,
         x1, y2, z1,
         x2, y2, z1,
     });
-    if (context.down)
+    if (!context.down)
         arraylist.appendSliceAssumeCapacity(&.{
             x1, y1, z2,
             x2, y1, z2,
@@ -225,18 +225,18 @@ fn writeLiquidStillVertices(arraylist: *std.ArrayList(f32), x: i32, y: i32, z: i
     });
 }
 
-fn slabFaceCount(context: Context) usize {
+fn slabFaceCount(context: Context.Occlusion) usize {
     // Top face always renders
     var ret: usize = 1;
-    if (context.north)
+    if (!context.north)
         ret += 1;
-    if (context.east)
+    if (!context.east)
         ret += 1;
-    if (context.south)
+    if (!context.south)
         ret += 1;
-    if (context.west)
+    if (!context.west)
         ret += 1;
-    if (context.down)
+    if (!context.down)
         ret += 1;
     return ret;
 }

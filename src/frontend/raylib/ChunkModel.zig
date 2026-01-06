@@ -4,7 +4,9 @@
 const std = @import("std");
 const rl = @import("raylib");
 const coord = @import("coord");
-const Chunk = @import("terrain").Chunk;
+const terrain = @import("terrain");
+const Chunk = terrain.Chunk;
+const Context = terrain.Context;
 const blocks = @import("blocks");
 const tracy = @import("tracy");
 
@@ -189,10 +191,13 @@ fn generateSingleMesh(alloc: std.mem.Allocator, chunk: Chunk, offset: *usize, tr
         // Block coordinates
         const xyz = Chunk.coordFromIndex(i);
 
-        const context: blocks.Context = chunk.getContext(xyz);
-        const face_count: c_ushort = @intCast(blocks.models.faceCount(block.block_model, context));
+        const context: Context = chunk.getContext(xyz);
+        const face_count: c_ushort = @intCast(blocks.models.faceCount(block.block_model, context.occlusion));
         if (face_count == 0)
             continue;
+
+        const metadata = chunk.getBlockMeta(xyz);
+        _ = metadata;
 
         const vertex_count: c_ushort = face_count * 4;
 
@@ -201,7 +206,8 @@ fn generateSingleMesh(alloc: std.mem.Allocator, chunk: Chunk, offset: *usize, tr
             break;
 
         // Add vertices
-        blocks.models.writeVertices(&vertices, block.block_model, xyz, context);
+        // TODO: ensure unused capacity?
+        blocks.models.writeVertices(&vertices, block.block_model, xyz, context.occlusion);
 
         // Add triangles
         try indices.ensureUnusedCapacity(rl.mem, face_count * 6); // TODO: more elegant way to get these numbers
@@ -209,11 +215,16 @@ fn generateSingleMesh(alloc: std.mem.Allocator, chunk: Chunk, offset: *usize, tr
 
         // Colors (later based on chunk lighting)
         try colors.ensureUnusedCapacity(rl.mem, vertex_count);
-        blocks.uv.writeColors(&colors, context, vertex_count, block_id);
+        blocks.coloring.writeColors(&colors, context.occlusion, vertex_count, block_id);
+        blocks.coloring.adjustColors(
+            @ptrCast(colors.items[(colors.items.len - vertex_count)..]),
+            vertices.items[(vertices.items.len - (vertex_count * 3))..],
+            context,
+        );
 
         // Add UV
         try texcoords.ensureUnusedCapacity(rl.mem, vertex_count * 2);
-        blocks.uv.writeUV(&texcoords, context, block_id);
+        blocks.uv.writeUV(&texcoords, context.occlusion, block_id);
 
         // Count up the vertex indices
         next_id += vertex_count;

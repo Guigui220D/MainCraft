@@ -73,6 +73,7 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .imports = &.{
             .{ .name = "coord", .module = coord_mod },
+            .{ .name = "terrain", .module = terrain_mod },
         },
     });
     terrain_mod.addImport("blocks", blocks_mod);

@@ -62,42 +62,105 @@ pub const Block = struct {
     }
 };
 
-/// Float 3D vector for entity positions
-pub const Vec3f = struct {
-    x: f64,
-    y: f64,
-    z: f64,
+/// Double float vectors used by entities for instance
+pub const Vec3f = Vec3(f64);
+/// Single float vectors used by vertices for instance
+pub const Vec3fs = Vec3(f32);
 
-    /// Gets a position from integers the way it is encoded in some packets
-    pub inline fn fromIntsDiv32(x: i32, y: i32, z: i32) Vec3f {
-        return .{
-            .x = @as(f64, @floatFromInt(x)) / 32.0,
-            .y = @as(f64, @floatFromInt(y)) / 32.0,
-            .z = @as(f64, @floatFromInt(z)) / 32.0,
-        };
-    }
+/// Generic float vector type
+pub fn Vec3(Float: type) type {
+    return packed struct {
+        const Vec = @This();
 
-    /// Gets the block that vec3f is in
-    pub inline fn getBlock(pos: Vec3f) Block {
-        var block: Block = .{ .x = @intFromFloat(pos.x), .y = @intFromFloat(pos.y), .z = @intFromFloat(pos.z) };
-        if (pos.x < 0)
-            block.x -= 1;
-        if (pos.y < 0)
-            block.y -= 1;
-        if (pos.z < 0)
-            block.z -= 1;
-        return block;
-    }
+        x: Float,
+        y: Float,
+        z: Float,
 
-    /// Adds two vectors
-    pub inline fn add(a: Vec3f, b: Vec3f) Vec3f {
-        return .{
-            .x = a.x + b.x,
-            .y = a.y + b.y,
-            .z = a.z + b.z,
-        };
-    }
-};
+        /// Gets a position from integers the way it is encoded in some packets
+        pub inline fn fromIntsDiv32(x: i32, y: i32, z: i32) Vec {
+            return .{
+                .x = @as(Float, @floatFromInt(x)) / 32.0,
+                .y = @as(Float, @floatFromInt(y)) / 32.0,
+                .z = @as(Float, @floatFromInt(z)) / 32.0,
+            };
+        }
+
+        /// Gets the block that vector is in
+        pub inline fn getBlock(pos: Vec) Block {
+            var block: Block = .{ .x = @intFromFloat(pos.x), .y = @intFromFloat(pos.y), .z = @intFromFloat(pos.z) };
+            if (pos.x < 0)
+                block.x -= 1;
+            if (pos.y < 0)
+                block.y -= 1;
+            if (pos.z < 0)
+                block.z -= 1;
+            return block;
+        }
+
+        /// Adds two vectors
+        pub inline fn add(a: Vec, b: Vec) Vec {
+            return .{
+                .x = a.x + b.x,
+                .y = a.y + b.y,
+                .z = a.z + b.z,
+            };
+        }
+
+        /// Substract a vector from an other
+        pub inline fn sub(a: Vec, b: Vec) Vec {
+            return .{
+                .x = a.x - b.x,
+                .y = a.y - b.y,
+                .z = a.z - b.z,
+            };
+        }
+
+        /// Cross product
+        pub inline fn cross(a: Vec, b: Vec) Vec {
+            return .{
+                .x = a.y * b.z - a.z * b.y,
+                .y = a.z * b.x - a.x * b.z,
+                .z = a.x * b.y - a.y * b.x,
+            };
+        }
+
+        /// Length of the vector
+        pub inline fn length(a: Vec) Float {
+            return @sqrt(a.x * a.x + a.y * a.y + a.z * a.z);
+        }
+
+        /// Normalize the vector (make its length 1)
+        pub inline fn normalize(a: Vec) Vec {
+            const len = a.length();
+            if (len == 0)
+                return a;
+
+            return .{
+                .x = a.x / len,
+                .y = a.y / len,
+                .z = a.z / len,
+            };
+        }
+
+        /// Gives a general direction corresponding to the vector
+        /// This is for very basic cases and doesn't do any fancy maths
+        pub fn generalDirection(a: Vec) Direction {
+            if (a.x > 0.9)
+                return .east;
+            if (a.x < -0.9)
+                return .west;
+            if (a.y > 0.9)
+                return .up;
+            if (a.y < -0.9)
+                return .down;
+            if (a.z > 0.9)
+                return .south;
+            if (a.z < -0.9)
+                return .north;
+            return .self;
+        }
+    };
+}
 
 test "Block from Vec3f" {
     const a = Vec3f{ .x = 0.1, .y = 1, .z = 2.1 };

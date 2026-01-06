@@ -124,6 +124,7 @@ pub fn getFaceHitbox(self: HitboxAABB, dir: Direction) HitboxAABB {
         .west => ret.b.x = ret.a.x,
         .up => ret.a.y = ret.b.y,
         .down => ret.b.y = ret.a.y,
+        .self => unreachable,
     }
     return ret;
 }

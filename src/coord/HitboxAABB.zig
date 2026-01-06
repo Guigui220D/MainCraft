@@ -6,6 +6,8 @@ const vec = @import("vectors.zig");
 const Vec3f = vec.Vec3f;
 const Block = vec.Block;
 
+const Direction = @import("direction.zig").Direction;
+
 const HitboxAABB = @This();
 
 a: Vec3f,
@@ -96,6 +98,34 @@ pub fn getBlocks(self: HitboxAABB) BlockIterator {
         .b = b,
         .current = a,
     };
+}
+
+/// Returns an iterator to take into consideration every block touched by the selected face the hitbox
+pub fn getFaceBlocks(self: HitboxAABB, dir: Direction) BlockIterator {
+    const ordered = self.reorder().getFaceHitbox(dir);
+    const a = ordered.a.getBlock();
+    const b = ordered.b.getBlock();
+
+    return .{
+        .a = a,
+        .b = b,
+        .current = a,
+    };
+}
+
+/// "Flattens" the hitbox to only represent one of the faces
+/// Only works if the two corners are ordered the right way (see reorder)
+pub fn getFaceHitbox(self: HitboxAABB, dir: Direction) HitboxAABB {
+    var ret = self;
+    switch (dir) {
+        .north => ret.b.z = ret.a.z,
+        .east => ret.a.x = ret.b.x,
+        .south => ret.a.z = ret.b.z,
+        .west => ret.b.x = ret.a.x,
+        .up => ret.a.y = ret.b.y,
+        .down => ret.b.y = ret.a.y,
+    }
+    return ret;
 }
 
 test "Hitbox blocks iteration" {

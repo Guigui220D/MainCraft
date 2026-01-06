@@ -2,6 +2,8 @@
 
 const std = @import("std");
 
+const Direction = @import("direction.zig").Direction;
+
 /// Coordinates of a chunk
 pub const Chunk = struct {
     x: i32 = 0,
@@ -13,6 +15,15 @@ pub const Block = struct {
     x: i32 = 0,
     y: i32 = 0,
     z: i32 = 0,
+
+    /// Adds two vectors
+    pub inline fn add(a: Block, b: Block) Block {
+        return .{
+            .x = a.x + b.x,
+            .y = a.y + b.y,
+            .z = a.z + b.z,
+        };
+    }
 
     /// Get the chunk coordinates from the global block coordinates
     pub inline fn getChunk(self: Block) Chunk {
@@ -45,28 +56,9 @@ pub const Block = struct {
         return (self.x == 0 or self.z == 0 or self.x == 15 or self.z == 15);
     }
 
-    pub inline fn north(self: Block) Block {
-        return .{ .x = self.x, .y = self.y, .z = self.z - 1 };
-    }
-
-    pub inline fn east(self: Block) Block {
-        return .{ .x = self.x + 1, .y = self.y, .z = self.z };
-    }
-
-    pub inline fn south(self: Block) Block {
-        return .{ .x = self.x, .y = self.y, .z = self.z + 1 };
-    }
-
-    pub inline fn west(self: Block) Block {
-        return .{ .x = self.x - 1, .y = self.y, .z = self.z };
-    }
-
-    pub inline fn up(self: Block) Block {
-        return .{ .x = self.x, .y = self.y + 1, .z = self.z };
-    }
-
-    pub inline fn down(self: Block) Block {
-        return .{ .x = self.x, .y = self.y - 1, .z = self.z };
+    /// Returns the coordinates of a neighbor block
+    pub inline fn neighbor(self: Block, dir: Direction) Block {
+        return self.add(Direction.asRelativeBlock(dir));
     }
 };
 

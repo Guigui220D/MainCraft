@@ -148,12 +148,12 @@ pub fn setBlockId(self: *Chunk, pos: coord.Block, block_id: u8) void {
 }
 
 pub fn getContext(self: Chunk, pos: coord.Block) blocks.Context {
-    const block_n = blocks.table[getBlockIdTranscend(self, pos.north())];
-    const block_e = blocks.table[getBlockIdTranscend(self, pos.east())];
-    const block_s = blocks.table[getBlockIdTranscend(self, pos.south())];
-    const block_w = blocks.table[getBlockIdTranscend(self, pos.west())];
-    const block_u = blocks.table[getBlockIdTranscend(self, pos.up())];
-    const block_d = blocks.table[getBlockIdTranscend(self, pos.down())];
+    const block_n = blocks.table[getBlockIdTranscend(self, pos.neighbor(.north))];
+    const block_e = blocks.table[getBlockIdTranscend(self, pos.neighbor(.east))];
+    const block_s = blocks.table[getBlockIdTranscend(self, pos.neighbor(.south))];
+    const block_w = blocks.table[getBlockIdTranscend(self, pos.neighbor(.west))];
+    const block_u = blocks.table[getBlockIdTranscend(self, pos.neighbor(.up))];
+    const block_d = blocks.table[getBlockIdTranscend(self, pos.neighbor(.down))];
 
     return .{
         .north = !block_n.full_block or block_n.transparent,

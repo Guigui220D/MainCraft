@@ -16,20 +16,30 @@ pub const height = 128;
 
 pub const block_data_len = (height * width * width);
 
+/// Reference to the world containing this chunk
 world: *World,
+/// Chunk position
 coords: coord.Chunk,
+/// Blocks
 blocks_data: []u8,
+/// Block meta
 metadata: []u8,
+/// Blocklight (by pairs of u4)
 blocklight: []u8,
+/// Skylight (by pairs of u4)
 skylight: []u8,
+/// Model for rendering
 model: ?io.ChunkModel,
 /// ~~Flag~~ Value indicating if the model is up to date or not
 /// Used to be a boolean, is now a value: 0 means not dirty, anything else means dirty
 /// With the lowest value being the highest priority
 model_dirty: u64,
+/// Flag that if false indicates the thread has finished generating the model and we need call finalize (for instance to upload model)
+model_finalized: bool,
+/// Mutex for the chunk's data (not for the model)
+data_mutex: std.Thread.Mutex,
 
 pub fn initEmpty(world: *World, alloc: std.mem.Allocator, coords: coord.Chunk) !*Chunk {
-    // Unimplemented
     const ret = try alloc.create(Chunk);
     errdefer alloc.destroy(ret);
 
@@ -42,6 +52,8 @@ pub fn initEmpty(world: *World, alloc: std.mem.Allocator, coords: coord.Chunk) !
         .skylight = undefined,
         .model = null,
         .model_dirty = 0,
+        .model_finalized = true,
+        .data_mutex = .{},
     };
 
     ret.blocks_data = try alloc.alloc(u8, block_data_len);
@@ -69,8 +81,36 @@ pub fn initEmpty(world: *World, alloc: std.mem.Allocator, coords: coord.Chunk) !
     return ret;
 }
 
+/// Clones the chunk (thread safe)
+/// This is used when we want to iterate over the chunk's blocks for a while without blocking the mutex every time
+pub fn clone(self: *Chunk, alloc: std.mem.Allocator) !Chunk {
+    self.data_mutex.lock();
+    defer self.data_mutex.unlock();
+
+    var ret: Chunk = self.*;
+
+    ret.data_mutex = .{};
+
+    ret.blocks_data = try alloc.dupe(u8, self.blocks_data);
+    errdefer alloc.free(ret.blocks_data);
+
+    ret.metadata = try alloc.dupe(u8, self.metadata);
+    errdefer alloc.free(ret.metadata);
+
+    ret.blocklight = try alloc.dupe(u8, self.blocklight);
+    errdefer alloc.free(ret.blocklight);
+
+    ret.skylight = try alloc.dupe(u8, self.skylight);
+    errdefer alloc.free(ret.skylight);
+
+    return ret;
+}
+
 // TODO: Understand better the memory layout of data, and also, is a chunk only 128 blocks high?
 pub fn setChunkData(self: *Chunk, data: []const u8, x1: i32, y1: i32, z1: i32, x2: i32, y2: i32, z2: i32) []const u8 {
+    self.data_mutex.lock();
+    defer self.data_mutex.unlock();
+
     var remaining = data;
 
     //const dx = @abs(x2 - x1);
@@ -125,6 +165,9 @@ pub fn setChunkData(self: *Chunk, data: []const u8, x1: i32, y1: i32, z1: i32, x
 }
 
 pub fn destroyChunk(self: *Chunk, alloc: std.mem.Allocator) void {
+    self.data_mutex.lock();
+    defer self.data_mutex.unlock();
+
     self.deinit(alloc);
     if (self.model) |model|
         model.deinit(alloc);
@@ -133,15 +176,15 @@ pub fn destroyChunk(self: *Chunk, alloc: std.mem.Allocator) void {
 
 /// Sets the flag that the model must be updated
 pub inline fn markDirtiness(self: *Chunk, counter: *usize) void {
+    if (self.model_dirty > 0)
+        return; // Already marked
+
     self.model_dirty = counter.*;
     counter.* +|= 1;
 }
 
-pub fn updateModel(self: *Chunk, alloc: std.mem.Allocator) !void {
-    // TODO: only update one model per frame/tick to avoid spike lags
-    if (self.model) |old_model|
-        old_model.deinit(alloc);
-
+/// Update model of the chunk (thread safe)
+pub fn updateModel(self: *Chunk, alloc: std.mem.Allocator) void {
     const zone = tracy.Zone.begin(.{
         .name = "Chunk meshing",
         .src = @src(),
@@ -149,8 +192,29 @@ pub fn updateModel(self: *Chunk, alloc: std.mem.Allocator) !void {
     });
     defer zone.end();
 
-    self.model = try io.ChunkModel.generateForChunk(alloc, self.*);
-    self.model_dirty = 0;
+    // Generate new model
+    // TODO: what to do on failure?
+    const new_model = blk: {
+        var chunk_clone = self.clone(alloc) catch return;
+        defer chunk_clone.deinit(alloc);
+
+        break :blk io.ChunkModel.generateForChunk(alloc, &chunk_clone) catch return;
+    };
+    errdefer new_model.deinit();
+
+    const old_model = self.model;
+
+    {
+        // Do the thread unsafe stuff now
+        self.world.meshes_mutex.lock();
+        defer self.world.meshes_mutex.unlock();
+        self.model = new_model;
+        self.model_finalized = false;
+
+        // Deinit old model
+        if (old_model) |old|
+            old.deinit(alloc);
+    }
 }
 
 pub fn deinit(self: Chunk, alloc: std.mem.Allocator) void {
@@ -162,19 +226,27 @@ pub fn deinit(self: Chunk, alloc: std.mem.Allocator) void {
 
 /// Get block id or 0 if the local coordinates are outside of the chunk
 /// The position is within the chunk, not global coordinates
-pub fn getBlockId(self: Chunk, pos: coord.Block) u8 {
+pub fn getBlockId(self: *Chunk, pos: coord.Block) u8 {
     if (!pos.isWithinChunk())
         return 0;
+
     const index = indexFromCoord(pos);
+
+    self.data_mutex.lock();
+    defer self.data_mutex.unlock();
+
     return self.blocks_data[index];
 }
 
 /// Get block id within the chunk, or from a neighbor chunk, transcending chunk boundaries
 /// If the coordinates are for a neighbor that isn't loaded, this returns 0
 /// The position is in the chunk's coordiante space within, not global coordinates
-pub fn getBlockIdTranscend(self: Chunk, pos: coord.Block) u8 {
+pub fn getBlockIdTranscend(self: *Chunk, pos: coord.Block) u8 {
     if (pos.isWithinChunk()) {
         // Local block
+        self.data_mutex.lock();
+        defer self.data_mutex.unlock();
+
         const index = indexFromCoord(pos);
         return self.blocks_data[index];
     } else {
@@ -201,6 +273,9 @@ pub fn setBlockIdAndMetadata(self: *Chunk, pos: coord.Block, block_id: u8, block
 
     const index = indexFromCoord(pos);
 
+    self.data_mutex.lock();
+    defer self.data_mutex.unlock();
+
     self.blocks_data[index] = block_id;
 
     var meta = self.metadata[index / 2];
@@ -215,11 +290,15 @@ pub fn setBlockIdAndMetadata(self: *Chunk, pos: coord.Block, block_id: u8, block
 }
 
 /// Get block lighting levels
-pub fn getLight(self: Chunk, pos: coord.Block) LightLevel {
+pub fn getLight(self: *Chunk, pos: coord.Block) LightLevel {
     if (!pos.isWithinChunk())
         return .{ .blocklight = 0, .skylight = 15 };
 
     const index = indexFromCoord(pos);
+
+    self.data_mutex.lock();
+    defer self.data_mutex.unlock();
+
     const blocklight = self.blocklight[index / 2];
     const skylight = self.skylight[index / 2];
     if (index % 2 == 0) {
@@ -238,7 +317,7 @@ pub fn getLight(self: Chunk, pos: coord.Block) LightLevel {
 /// Get block lighting levels within the chunk, or from a neighbor chunk, transcending chunk boundaries
 /// If the coordinates are for a neighbor that isn't loaded, this returns a default value
 /// The position is in the chunk's coordiante space within, not global coordinates
-pub fn getLightTranscend(self: Chunk, pos: coord.Block) LightLevel {
+pub fn getLightTranscend(self: *Chunk, pos: coord.Block) LightLevel {
     if (pos.isWithinChunk()) {
         // Local block
         return self.getLight(pos);
@@ -261,10 +340,15 @@ pub fn getLightTranscend(self: Chunk, pos: coord.Block) LightLevel {
 }
 
 /// Get block metadata
-pub fn getBlockMeta(self: Chunk, pos: coord.Block) u4 {
+pub fn getBlockMeta(self: *Chunk, pos: coord.Block) u4 {
     if (!pos.isWithinChunk())
         return 0;
+
     const index = indexFromCoord(pos);
+
+    self.data_mutex.lock();
+    defer self.data_mutex.unlock();
+
     const val = self.metadata[index / 2];
     if (index % 2 == 0) {
         return @intCast(val & 0x0f);
@@ -273,7 +357,7 @@ pub fn getBlockMeta(self: Chunk, pos: coord.Block) u4 {
     }
 }
 
-pub fn getContext(self: Chunk, pos: coord.Block) Context {
+pub fn getContext(self: *Chunk, pos: coord.Block) Context {
     const zone = tracy.Zone.begin(.{
         .name = "Get context",
         .src = @src(),

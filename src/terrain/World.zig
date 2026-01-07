@@ -13,13 +13,25 @@ const ChunkList = std.AutoHashMap(coord.Chunk, *Chunk);
 alloc: std.mem.Allocator,
 chunk_list: ChunkList,
 dirty_priority_counter: u64,
+modeling_thread_pool: *std.Thread.Pool,
+meshes_mutex: std.Thread.Mutex,
 
 pub fn init(alloc: std.mem.Allocator) !World {
-    return .{
+    var ret: World = .{
         .alloc = alloc,
         .chunk_list = .init(alloc),
         .dirty_priority_counter = 1,
+        .modeling_thread_pool = undefined,
+        .meshes_mutex = .{},
     };
+
+    ret.modeling_thread_pool = try alloc.create(std.Thread.Pool);
+    errdefer alloc.destroy(ret.modeling_thread_pool);
+
+    try ret.modeling_thread_pool.init(.{ .allocator = alloc });
+    errdefer ret.modeling_thread_pool.deinit();
+
+    return ret;
 }
 
 /// Gets a chunk reference from its coordinates
@@ -189,30 +201,63 @@ pub fn setBlockIdAndMetadata(self: *World, pos: coord.Block, block_id: u8, block
     }
 }
 
+const PendingModeling = struct {
+    priority: usize,
+    coords: coord.Chunk,
+
+    fn lessThan(context: void, a: PendingModeling, b: PendingModeling) bool {
+        _ = context;
+        return a.priority < b.priority;
+    }
+};
+
 /// Updates a single chunk's model if it is marked as dirty
 /// Returns true if a model was updated
-pub fn updateModel(self: *World) !bool {
+pub fn updateModels(self: *World) !void {
     var it = self.chunk_list.iterator();
-    var to_update: ?*Chunk = null;
-    var dirtiest: u64 = 0;
 
-    // TODO: does it make sense to not search through whole array? like how long is iterating
-    // priority is only a heuristic, it doesn't matter *that* much
-    // Find dirty chunk with highest priority
+    var buf: [8]PendingModeling = undefined;
+    var pending_arraylist = std.ArrayList(PendingModeling).initBuffer(&buf);
+
+    // Find dirty chunks
     while (it.next()) |entry| {
         const chunk = entry.value_ptr.*;
-        // This intentionally doesn't include chunks whose dirtiness is 0
-        if (chunk.model_dirty > dirtiest) {
-            to_update = chunk;
-            dirtiest = chunk.model_dirty;
+        if (chunk.model_dirty > 0) {
+            // Add chunks to model to list
+            pending_arraylist.appendBounded(.{
+                .coords = chunk.coords,
+                .priority = chunk.model_dirty,
+            }) catch break;
+
+            // Unset flag
+            chunk.model_dirty = 0;
         }
     }
 
-    if (to_update) |chunk_to_update| {
-        try chunk_to_update.updateModel(self.alloc);
-        return true;
-    } else {
-        return false;
+    // Sort list
+    std.sort.insertion(PendingModeling, pending_arraylist.items, {}, PendingModeling.lessThan);
+
+    // Add tasks to pool
+    for (pending_arraylist.items) |pending| {
+        if (self.getChunk(pending.coords)) |chunk|
+            try self.modeling_thread_pool.spawn(Chunk.updateModel, .{ chunk, self.alloc });
+    }
+
+    // Call finalize on chunks that need it
+    {
+        self.meshes_mutex.lock();
+        defer self.meshes_mutex.unlock();
+
+        it = self.chunk_list.iterator();
+        while (it.next()) |entry| {
+            const chunk = entry.value_ptr.*;
+            if (!chunk.model_finalized) {
+                if (chunk.model) |*model| {
+                    try model.finalize();
+                }
+                chunk.model_finalized = true;
+            }
+        }
     }
 }
 
@@ -244,6 +289,9 @@ fn removeChunk(self: *World, coords: coord.Chunk) void {
 }
 
 pub fn deinit(self: *World) void {
+    self.modeling_thread_pool.deinit();
+    self.alloc.destroy(self.modeling_thread_pool);
+
     var it = self.chunk_list.iterator();
     // Destroy all contained chunks
     while (it.next()) |entry| {

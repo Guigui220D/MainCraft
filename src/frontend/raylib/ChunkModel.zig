@@ -13,8 +13,6 @@ const meshing = @import("meshing");
 
 const ChunkModel = @This();
 
-// TODO: make the meshes on a separate thread
-
 // Material
 // TODO: ressource manager
 var texture: rl.Texture = undefined;
@@ -53,7 +51,7 @@ pub fn deinitMesher() void {
 }
 
 /// Prepare the ChunkModel for a chunk (part of the API)
-pub fn generateForChunk(alloc: std.mem.Allocator, chunk: Chunk) !ChunkModel {
+pub fn generateForChunk(alloc: std.mem.Allocator, chunk: *Chunk) !ChunkModel {
     const meshes, const transparent_meshes = try generateMeshesForChunk(alloc, chunk);
     errdefer {
         for (meshes) |mesh|
@@ -65,17 +63,20 @@ pub fn generateForChunk(alloc: std.mem.Allocator, chunk: Chunk) !ChunkModel {
         alloc.free(transparent_meshes);
     }
 
-    // Upload generated meshes
-    for (meshes) |*mesh|
-        rl.uploadMesh(mesh, false);
-
-    for (transparent_meshes) |*mesh|
-        rl.uploadMesh(mesh, false);
-
     return .{
         .meshes = meshes,
         .transparent_meshes = transparent_meshes,
     };
+}
+
+/// Non multithreaded part of generation (part of the API)
+pub fn finalize(self: *ChunkModel) !void {
+    // Upload generated meshes
+    for (self.meshes) |*mesh|
+        rl.uploadMesh(mesh, false);
+
+    for (self.transparent_meshes) |*mesh|
+        rl.uploadMesh(mesh, false);
 }
 
 pub fn draw(self: ChunkModel, pos: coord.Chunk) void {
@@ -93,16 +94,18 @@ pub fn drawTransparentLayer(self: ChunkModel, pos: coord.Chunk) void {
 }
 
 pub fn deinit(self: ChunkModel, alloc: std.mem.Allocator) void {
-    for (self.meshes) |mesh|
-        mesh.unload();
-    for (self.transparent_meshes) |mesh|
-        mesh.unload();
+    // TODO: this has to be done somewhere!
+    //for (self.meshes) |mesh|
+    //    mesh.unload();
+    //for (self.transparent_meshes) |mesh|
+    //    mesh.unload();
+
     alloc.free(self.meshes);
     alloc.free(self.transparent_meshes);
 }
 
 /// Renders a chunk into a mesh
-fn generateMeshesForChunk(alloc: std.mem.Allocator, chunk: Chunk) !struct { []rl.Mesh, []rl.Mesh } {
+fn generateMeshesForChunk(alloc: std.mem.Allocator, chunk: *Chunk) !struct { []rl.Mesh, []rl.Mesh } {
     // Meshes arraylist
     var meshes: std.ArrayList(rl.Mesh) = .{};
     var transparent_meshes: std.ArrayList(rl.Mesh) = .{};
@@ -155,7 +158,7 @@ fn generateMeshesForChunk(alloc: std.mem.Allocator, chunk: Chunk) !struct { []rl
 }
 
 // TODO: two passes aren't necessary, can collect both meshes in one go
-fn generateSingleMesh(alloc: std.mem.Allocator, chunk: Chunk, offset: *usize, transparent: bool) !?rl.Mesh {
+fn generateSingleMesh(alloc: std.mem.Allocator, chunk: *Chunk, offset: *usize, transparent: bool) !?rl.Mesh {
     const zone = tracy.Zone.begin(.{
         .name = "Chunk meshing (rl)",
         .src = @src(),

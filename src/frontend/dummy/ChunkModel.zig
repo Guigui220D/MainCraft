@@ -11,4 +11,6 @@ pub fn generateForChunk(_: std.mem.Allocator, _: Chunk) !ChunkModel {
     return .{};
 }
 
+pub fn finalize(_: *ChunkModel) !void {}
+
 pub fn deinit(_: ChunkModel, _: std.mem.Allocator) void {}

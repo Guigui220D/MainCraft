@@ -193,26 +193,35 @@ pub fn drawWorld(self: GameWindow) void {
     if (self.wiremesh)
         rl.gl.rlEnableWireMode();
 
-    var chunk_it = game.world.chunk_list.iterator();
-    while (chunk_it.next()) |entry| {
-        const chunk = entry.value_ptr.*;
-        const chunk_pos = entry.key_ptr.*;
-        if (self.f3_enabled) {
-            // Draw chunk bottom/bounds (debug)
-            rl.drawCubeWires(.{ .x = @floatFromInt(chunk_pos.x * 16 + 8), .y = 64, .z = @floatFromInt(chunk_pos.z * 16 + 8) }, 16, 128, 16, .red);
-            rl.drawPlane(.{ .x = @floatFromInt(chunk_pos.x * 16 + 8), .y = 0, .z = @floatFromInt(chunk_pos.z * 16 + 8) }, .{ .x = 16, .y = 16 }, .magenta);
-        }
-        // Draw the solid part of the chunk
-        if (chunk.model) |model| {
-            model.draw(entry.key_ptr.*);
-        }
-    }
+    {
+        game.world.meshes_mutex.lock();
+        defer game.world.meshes_mutex.unlock();
 
-    // Draw the transparent part of chunks
-    chunk_it = game.world.chunk_list.iterator();
-    while (chunk_it.next()) |entry| {
-        if (entry.value_ptr.*.model) |model| {
-            model.drawTransparentLayer(entry.key_ptr.*);
+        var chunk_it = game.world.chunk_list.iterator();
+        while (chunk_it.next()) |entry| {
+            const chunk = entry.value_ptr.*;
+            const chunk_pos = entry.key_ptr.*;
+            if (self.f3_enabled) {
+                // Draw chunk bottom/bounds (debug)
+                rl.drawCubeWires(.{ .x = @floatFromInt(chunk_pos.x * 16 + 8), .y = 64, .z = @floatFromInt(chunk_pos.z * 16 + 8) }, 16, 128, 16, .red);
+                rl.drawPlane(.{ .x = @floatFromInt(chunk_pos.x * 16 + 8), .y = 0, .z = @floatFromInt(chunk_pos.z * 16 + 8) }, .{ .x = 16, .y = 16 }, .magenta);
+            }
+            // Draw the solid part of the chunk
+            if (chunk.model_finalized) {
+                if (chunk.model) |model| {
+                    model.draw(entry.key_ptr.*);
+                }
+            }
+        }
+
+        // Draw the transparent part of chunks
+        chunk_it = game.world.chunk_list.iterator();
+        while (chunk_it.next()) |entry| {
+            if (entry.value_ptr.*.model_finalized) {
+                if (entry.value_ptr.*.model) |model| {
+                    model.drawTransparentLayer(entry.key_ptr.*);
+                }
+            }
         }
     }
 

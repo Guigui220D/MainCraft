@@ -8,6 +8,8 @@ const blocks = @import("blocks");
 const Context = @import("terrain").Context;
 const coord = @import("coord");
 
+const meshing = @import("meshing.zig");
+
 /// The higher this is, the less impact light levels have on blocks
 const lighting_adjustment = 2;
 
@@ -57,7 +59,7 @@ const debug_face_dir = false;
 
 /// Apply light level to colors that already exist
 /// The vertices are used to determine face orientation 3 vertices match 4 color bytes
-pub fn adjustColors(colors: []u8, vertices: []const f32, context: Context) void {
+pub fn adjustColors(colors: []u8, vertices: []const f32, context: Context, full_block: bool) void {
     const zone = tracy.Zone.begin(.{
         .name = "Adjust colors",
         .src = @src(),
@@ -65,40 +67,23 @@ pub fn adjustColors(colors: []u8, vertices: []const f32, context: Context) void 
     });
     defer zone.end();
 
-    // TODO: where to put those?
-    const Vertex = coord.Vec3fs;
-
-    const Face = packed struct {
-        a: Vertex,
-        b: Vertex,
-        c: Vertex,
-        _: Vertex,
-    };
-
-    const Color = packed struct(u32) {
-        r: u8,
-        g: u8,
-        b: u8,
-        a: u8,
-    };
-
-    const FaceColors = [4]Color;
-
     // Expect enough vertices for full 4 vertex faces
     std.debug.assert(vertices.len % (3 * 4) == 0);
     std.debug.assert(colors.len % 4 == 0);
 
-    const faces: []const Face = @ptrCast(@alignCast(vertices));
-    const faces_colors: []FaceColors = @ptrCast(@alignCast(colors));
+    const faces: []const meshing.Face = @ptrCast(@alignCast(vertices));
+    const faces_colors: []meshing.FaceColors = @ptrCast(@alignCast(colors));
     std.debug.assert(faces.len == faces_colors.len);
 
     for (faces, faces_colors) |face, *face_colors| {
-        // TODO: only use local lighting for non full blocks?
-        // Determine face orientation
-        const vb = face.b.sub(face.a);
-        const vc = face.c.sub(face.a);
-        const cross = vc.cross(vb).normalize();
-        const dir = cross.generalDirection();
+        // Get local light if we are not a full block
+        const dir: coord.Direction = if (!full_block) .self else blk: {
+            // Determine face orientation
+            const vb = face.b.sub(face.a);
+            const vc = face.c.sub(face.a);
+            const cross = vc.cross(vb).normalize();
+            break :blk cross.generalDirection();
+        };
 
         const light = context.getLight(dir);
         const blocklight = light.blocklight;

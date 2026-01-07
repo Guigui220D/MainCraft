@@ -247,6 +247,7 @@ fn generateSingleMesh(alloc: std.mem.Allocator, chunk: Chunk, offset: *usize, tr
                 @ptrCast(colors.items[(colors.items.len - vertex_count)..]),
                 vertices.items[(vertices.items.len - (vertex_count * 3))..],
                 context,
+                block.isFull(),
             );
 
             // Add UV

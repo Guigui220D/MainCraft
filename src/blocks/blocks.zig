@@ -9,8 +9,40 @@ fn texpos(x: comptime_int, y: comptime_int) comptime_int {
     return y * 16 + x;
 }
 
-// TODO: Struct containing all block ids by name as decls for comptime
-// TODO: does the fullblock property even make sense, knowing transparent and block model?
+/// Generate the blocks enum at compile time
+pub const blocks_enum = blk: {
+    @setEvalBranchQuota(5000);
+    var fields_ret: []const std.builtin.Type.EnumField = &.{};
+
+    for (table, 0..) |block_def, i| {
+        const name = (block_def.name ++ &[_]u8{0})[0..block_def.name.len :0];
+        // Block doesn't exist
+        if (name.len == 0)
+            continue;
+
+        // Check that we didn't already add that name
+        if (for (fields_ret) |existing_field| {
+            if (std.mem.eql(u8, existing_field.name, name))
+                break true;
+        } else false)
+            continue;
+
+        // Add to the fields
+        fields_ret = fields_ret ++ &[_]std.builtin.Type.EnumField{.{
+            .name = name,
+            .value = i,
+        }};
+    }
+
+    // Reify
+    const enum_ret: std.builtin.Type.Enum = .{
+        .decls = &.{},
+        .fields = fields_ret,
+        .is_exhaustive = false,
+        .tag_type = u8,
+    };
+    break :blk @Type(.{ .@"enum" = enum_ret });
+};
 
 /// Table of all block types
 pub const table = [256]Block{
@@ -290,7 +322,8 @@ pub const table = [256]Block{
 };
 
 test "block tests" {
-    std.debug.assert(table[1].isFull());
-    std.debug.assert(!table[18].isFull());
-    std.debug.assert(!table[44].isFull());
+    try std.testing.expect(table[@intFromEnum(blocks_enum.stone)].isFull());
+    try std.testing.expect(!table[@intFromEnum(blocks_enum.air)].isFull());
+    try std.testing.expect(!table[@intFromEnum(blocks_enum.glass)].isFull());
+    try std.testing.expect(!table[@intFromEnum(blocks_enum.step)].isFull());
 }

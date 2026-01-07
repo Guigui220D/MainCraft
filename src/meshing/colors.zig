@@ -28,8 +28,7 @@ pub fn writeColors(arraylist: *std.ArrayList(u32), context: Context.Occlusion, v
     defer zone.end();
 
     switch (block_id) {
-        // TODO: way to get block ids by names
-        2 => { // Grass
+        @intFromEnum(blocks.blocks_enum.grass) => {
             if (context.up) {
                 arraylist.appendNTimesAssumeCapacity(default_color, vertex_count);
             } else {
@@ -47,7 +46,9 @@ pub fn writeColors(arraylist: *std.ArrayList(u32), context: Context.Occlusion, v
                     arraylist.appendNTimesAssumeCapacity(default_color, 4);
             }
         },
-        18, 31 => { // Leaves, Tallgrass
+        @intFromEnum(blocks.blocks_enum.leaves),
+        @intFromEnum(blocks.blocks_enum.tallgrass),
+        => {
             arraylist.appendNTimesAssumeCapacity(foliage_color, vertex_count);
         },
         else => arraylist.appendNTimesAssumeCapacity(default_color, vertex_count),

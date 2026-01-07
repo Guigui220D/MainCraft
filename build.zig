@@ -63,13 +63,19 @@ pub fn build(b: *std.Build) void {
     const blocks_mod = b.addModule("blocks", .{
         .root_source_file = b.path("src/blocks/blocks.zig"),
         .target = target,
+    });
+    terrain_mod.addImport("blocks", blocks_mod);
+
+    const meshing_mod = b.addModule("meshing", .{
+        .root_source_file = b.path("src/meshing/meshing.zig"),
+        .target = target,
         .imports = &.{
+            .{ .name = "blocks", .module = blocks_mod },
             .{ .name = "coord", .module = coord_mod },
             .{ .name = "terrain", .module = terrain_mod },
             .{ .name = "tracy", .module = tracy_dep.module("tracy") },
         },
     });
-    terrain_mod.addImport("blocks", blocks_mod);
 
     const entities_mod = b.addModule("entities", .{
         .root_source_file = b.path("src/entities/entities.zig"),
@@ -103,9 +109,10 @@ pub fn build(b: *std.Build) void {
     io_mod.addImport("entities", entities_mod);
     io_mod.addImport("coord", coord_mod);
     io_mod.addImport("blocks", blocks_mod);
+    io_mod.addImport("meshing", meshing_mod);
     io_mod.addImport("tracy", tracy_dep.module("tracy"));
     terrain_mod.addImport("io", io_mod);
-    blocks_mod.addImport("io", io_mod);
+    meshing_mod.addImport("io", io_mod);
     entities_mod.addImport("io", io_mod);
 
     const net_mod = b.addModule("net", .{
@@ -208,6 +215,11 @@ pub fn build(b: *std.Build) void {
     });
     const run_blocks_tests = b.addRunArtifact(blocks_mod_tests);
 
+    const meshing_mod_tests = b.addTest(.{
+        .root_module = meshing_mod,
+    });
+    const run_meshing_tests = b.addRunArtifact(meshing_mod_tests);
+
     const entities_mod_tests = b.addTest(.{
         .root_module = entities_mod,
     });
@@ -233,6 +245,7 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_coord_tests.step);
     test_step.dependOn(&run_terrain_tests.step);
     test_step.dependOn(&run_blocks_tests.step);
+    test_step.dependOn(&run_meshing_tests.step);
     test_step.dependOn(&run_entities_tests.step);
     test_step.dependOn(&run_engine_tests.step);
     test_step.dependOn(&run_exe_tests.step);
@@ -245,6 +258,7 @@ pub fn build(b: *std.Build) void {
     b.step("test_coord", "Run coordinates module tests").dependOn(&run_coord_tests.step);
     b.step("test_terrain", "Run terrain module tests").dependOn(&run_terrain_tests.step);
     b.step("test_blocks", "Run blocks module tests").dependOn(&run_blocks_tests.step);
+    b.step("test_meshing", "Run meshing module tests").dependOn(&run_meshing_tests.step);
     b.step("test_entities", "Run entities module tests").dependOn(&run_entities_tests.step);
     b.step("test_engine", "Run engine tests").dependOn(&run_engine_tests.step);
     b.step("test_exe", "Run NBT module tests").dependOn(&run_exe_tests.step);

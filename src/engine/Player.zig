@@ -215,7 +215,7 @@ fn sideTouchesTerrain(self: Player, face: coord.Direction) bool {
     var block_it = hitbox.getFaceBlocks(face);
     while (block_it.next()) |block_pos| {
         const block_id = self.game.world.getBlockId(block_pos);
-        const blocking = blocks.table[block_id].hitbox;
+        const blocking = blocks.table[block_id].flags.hitbox;
         if (blocking)
             return true;
     }

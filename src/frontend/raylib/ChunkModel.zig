@@ -9,6 +9,7 @@ const Chunk = terrain.Chunk;
 const Context = terrain.Context;
 const blocks = @import("blocks");
 const tracy = @import("tracy");
+const meshing = @import("meshing");
 
 const ChunkModel = @This();
 
@@ -190,14 +191,14 @@ fn generateSingleMesh(alloc: std.mem.Allocator, chunk: Chunk, offset: *usize, tr
             continue;
 
         const block = blocks.table[block_id];
-        if (block.transparent != transparent)
+        if (block.flags.transparent != transparent)
             continue;
 
         // Block coordinates
         const xyz = Chunk.coordFromIndex(i);
 
         const context: Context = chunk.getContext(xyz);
-        const face_count: c_ushort = @intCast(blocks.models.faceCount(block.block_model, context.occlusion));
+        const face_count: c_ushort = @intCast(meshing.vertices.faceCount(block.flags.model, context.occlusion));
         if (face_count == 0)
             continue;
 
@@ -235,21 +236,21 @@ fn generateSingleMesh(alloc: std.mem.Allocator, chunk: Chunk, offset: *usize, tr
             defer write_zone.end();
 
             // Add vertices
-            blocks.models.writeVertices(&vertices, block.block_model, xyz, context.occlusion);
+            meshing.vertices.writeVertices(&vertices, block.flags.model, xyz, context.occlusion);
 
             // Add triangles
-            blocks.models.materializeFaces(&indices, face_count, next_id, false);
+            meshing.vertices.materializeFaces(&indices, face_count, next_id, false);
 
             // Colors (later based on chunk lighting)
-            blocks.coloring.writeColors(&colors, context.occlusion, vertex_count, block_id);
-            blocks.coloring.adjustColors(
+            meshing.colors.writeColors(&colors, context.occlusion, vertex_count, block_id);
+            meshing.colors.adjustColors(
                 @ptrCast(colors.items[(colors.items.len - vertex_count)..]),
                 vertices.items[(vertices.items.len - (vertex_count * 3))..],
                 context,
             );
 
             // Add UV
-            blocks.uv.writeUV(&texcoords, context.occlusion, block_id);
+            meshing.uv.writeUV(&texcoords, context.occlusion, block_id);
         }
 
         // Count up the vertex indices

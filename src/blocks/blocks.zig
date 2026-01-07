@@ -2,11 +2,8 @@
 
 const std = @import("std");
 
-const Block = @import("Block.zig");
-
-pub const models = @import("block_models.zig");
-pub const uv = @import("uv.zig");
-pub const coloring = @import("coloring.zig");
+pub const Block = @import("Block.zig");
+pub const BlockModel = Block.BlockModel;
 
 fn texpos(x: comptime_int, y: comptime_int) comptime_int {
     return y * 16 + x;
@@ -18,53 +15,53 @@ fn texpos(x: comptime_int, y: comptime_int) comptime_int {
 /// Table of all block types
 pub const table = [256]Block{
     // 0
-    .{ .name = "air", .full_block = false, .hitbox = false },
+    .{ .name = "air", .flags = .{ .hitbox = false, .transparent = true } },
     .{ .name = "stone", .tex_id = 1 },
-    .{ .name = "grass", .tex_id = 3, .top_tex_id = 0, .bottom_tex_id = 2, .uv_type = .barrel },
+    .{ .name = "grass", .tex_id = 3, .top_tex_id = 0, .bottom_tex_id = 2, .flags = .{ .model = .full_barrel } },
     .{ .name = "dirt", .tex_id = 2 },
     .{ .name = "cobblestone", .tex_id = texpos(0, 1) },
     .{ .name = "wood", .tex_id = 4 },
-    .{ .name = "sapling", .tex_id = 15, .full_block = false, .transparent = true, .hitbox = false },
+    .{ .name = "sapling", .tex_id = 15, .flags = .{ .transparent = true, .hitbox = false } },
     .{ .name = "bedrock", .tex_id = texpos(1, 1) },
-    .{ .name = "water", .tex_id = texpos(15, 12), .full_block = false, .transparent = true, .hitbox = false },
-    .{ .name = "water", .tex_id = texpos(15, 12), .full_block = false, .block_model = .liquid_still, .uv_type = .liquid, .transparent = true, .hitbox = false },
-    .{ .name = "lava", .tex_id = texpos(15, 14), .full_block = false, .hitbox = false },
-    .{ .name = "lava", .tex_id = texpos(15, 14), .full_block = false, .block_model = .liquid_still, .uv_type = .liquid, .hitbox = false },
+    .{ .name = "water", .tex_id = texpos(15, 12), .flags = .{ .transparent = true, .hitbox = false } },
+    .{ .name = "water", .tex_id = texpos(15, 12), .flags = .{ .model = .liquid_still, .transparent = true, .hitbox = false } },
+    .{ .name = "lava", .tex_id = texpos(15, 14), .flags = .{ .hitbox = false } },
+    .{ .name = "lava", .tex_id = texpos(15, 14), .flags = .{ .model = .liquid_still, .hitbox = false } },
     .{ .name = "sand", .tex_id = texpos(2, 1) },
     .{ .name = "gravel", .tex_id = texpos(3, 1) },
     .{ .name = "oreGold", .tex_id = texpos(0, 2) },
     .{ .name = "oreIron", .tex_id = texpos(1, 2) },
     // 16
     .{ .name = "oreCoal", .tex_id = texpos(2, 2) },
-    .{ .name = "log", .tex_id = texpos(4, 1), .top_tex_id = texpos(5, 1), .bottom_tex_id = texpos(5, 1), .uv_type = .barrel },
-    .{ .name = "leaves", .tex_id = texpos(4, 3), .full_block = false, .transparent = true },
+    .{ .name = "log", .tex_id = texpos(4, 1), .top_tex_id = texpos(5, 1), .bottom_tex_id = texpos(5, 1), .flags = .{ .model = .full_barrel } },
+    .{ .name = "leaves", .tex_id = texpos(4, 3), .flags = .{ .transparent = true } },
     .{},
-    .{ .name = "glass", .tex_id = texpos(1, 3), .full_block = false, .transparent = true },
+    .{ .name = "glass", .tex_id = texpos(1, 3), .flags = .{ .transparent = true } },
     .{ .name = "oreLapis", .tex_id = texpos(0, 10) },
     .{},
     .{},
-    .{ .name = "sandStone", .tex_id = texpos(0, 12), .top_tex_id = texpos(0, 11), .bottom_tex_id = texpos(0, 13), .uv_type = .barrel },
+    .{ .name = "sandStone", .tex_id = texpos(0, 12), .top_tex_id = texpos(0, 11), .bottom_tex_id = texpos(0, 13), .flags = .{ .model = .full_barrel } },
     .{},
     .{},
     .{},
     .{},
     .{},
     .{},
-    .{ .name = "tallgrass", .tex_id = texpos(7, 2), .full_block = false, .block_model = .plant, .uv_type = .plant, .transparent = true, .hitbox = false },
+    .{ .name = "tallgrass", .tex_id = texpos(7, 2), .flags = .{ .model = .plant, .transparent = true, .hitbox = false } },
     // 32
-    .{ .name = "deadbush", .tex_id = texpos(7, 3), .full_block = false, .block_model = .plant, .uv_type = .plant, .transparent = true, .hitbox = false },
+    .{ .name = "deadbush", .tex_id = texpos(7, 3), .flags = .{ .model = .plant, .transparent = true, .hitbox = false } },
     .{},
     .{},
     .{},
     .{},
-    .{ .name = "flower", .tex_id = 13, .full_block = false, .block_model = .plant, .uv_type = .plant, .transparent = true, .hitbox = false },
-    .{ .name = "rose", .tex_id = 12, .full_block = false, .block_model = .plant, .uv_type = .plant, .transparent = true, .hitbox = false },
-    .{ .name = "mushroom", .tex_id = texpos(13, 1), .full_block = false, .block_model = .plant, .uv_type = .plant, .transparent = true, .hitbox = false },
-    .{ .name = "mushroom", .tex_id = texpos(12, 1), .full_block = false, .block_model = .plant, .uv_type = .plant, .transparent = true, .hitbox = false },
+    .{ .name = "flower", .tex_id = 13, .flags = .{ .model = .plant, .transparent = true, .hitbox = false } },
+    .{ .name = "rose", .tex_id = 12, .flags = .{ .model = .plant, .transparent = true, .hitbox = false } },
+    .{ .name = "mushroom", .tex_id = texpos(13, 1), .flags = .{ .model = .plant, .transparent = true, .hitbox = false } },
+    .{ .name = "mushroom", .tex_id = texpos(12, 1), .flags = .{ .model = .plant, .transparent = true, .hitbox = false } },
     .{},
     .{},
     .{},
-    .{ .name = "step", .tex_id = 5, .top_tex_id = 6, .bottom_tex_id = 6, .full_block = false, .block_model = .slab, .uv_type = .slab },
+    .{ .name = "step", .tex_id = 5, .top_tex_id = 6, .bottom_tex_id = 6, .flags = .{ .model = .slab } },
     .{},
     .{},
     .{},
@@ -73,13 +70,13 @@ pub const table = [256]Block{
     .{},
     .{},
     .{},
-    .{ .name = "mobSpawner", .tex_id = texpos(1, 4), .full_block = false, .transparent = true },
+    .{ .name = "mobSpawner", .tex_id = texpos(1, 4), .flags = .{ .transparent = true } },
     .{},
     .{},
     .{},
     .{ .name = "oreDiamond", .tex_id = texpos(2, 3) },
     .{},
-    .{ .name = "workbench", .tex_id = texpos(12, 3), .east_tex_id = texpos(11, 3), .south_tex_id = texpos(11, 3), .west_tex_id = texpos(12, 3), .top_tex_id = texpos(11, 2), .bottom_tex_id = 4, .uv_type = .advanced },
+    .{ .name = "workbench", .tex_id = texpos(12, 3), .east_tex_id = texpos(11, 3), .south_tex_id = texpos(11, 3), .west_tex_id = texpos(12, 3), .top_tex_id = texpos(11, 2), .bottom_tex_id = 4, .flags = .{ .model = .full_advanced } },
     .{},
     .{},
     .{},
@@ -104,7 +101,7 @@ pub const table = [256]Block{
     .{},
     // 80
     .{},
-    .{ .name = "cactus", .tex_id = texpos(6, 4), .full_block = false },
+    .{ .name = "cactus", .tex_id = texpos(6, 4) },
     .{},
     .{},
     .{},
@@ -291,3 +288,9 @@ pub const table = [256]Block{
     .{},
     // 256
 };
+
+test "block tests" {
+    std.debug.assert(table[1].isFull());
+    std.debug.assert(!table[18].isFull());
+    std.debug.assert(!table[44].isFull());
+}

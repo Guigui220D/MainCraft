@@ -4,7 +4,7 @@ const std = @import("std");
 const io = @import("io");
 const tracy = @import("tracy");
 
-const blocks = @import("blocks.zig");
+const blocks = @import("blocks");
 const Context = @import("terrain").Context;
 
 // The atlas has (atlas_size*atlas_size) textures
@@ -56,16 +56,6 @@ pub fn getSlabUV(texture_id: u8, comptime reversed: bool) [8]f32 {
     }
 }
 
-// TODO: merge model types with uv types to avoid redundant information?
-pub const UvType = enum {
-    basic, // Blocks with the same texture on each side
-    barrel, // Blocks with a top, side, and bottom
-    advanced, // Blocks with specific textures for each side
-    slab, // Just like barrel but for slabs
-    plant, // Plants made of two planes
-    liquid, // Liquids (only still liquids as of now)
-};
-
 /// Write the right UV depending on the context and block id
 /// Assumes there is enough space left in the arraylist ((6 or 3) * face_count) depending of if using 2 tris or 1 quad per face
 pub fn writeUV(arraylist: *std.ArrayList(f32), context: Context.Occlusion, block_id: u8) void {
@@ -77,13 +67,13 @@ pub fn writeUV(arraylist: *std.ArrayList(f32), context: Context.Occlusion, block
     defer zone.end();
 
     const block = &blocks.table[block_id];
-    switch (block.uv_type) {
-        .basic => writeBasicUV(arraylist, context, block.tex_id),
-        .barrel => writeBarrelUV(arraylist, context, block.tex_id, block.top_tex_id, block.bottom_tex_id),
-        .advanced => writeAdvancedUV(arraylist, context, block.tex_id, block.east_tex_id, block.south_tex_id, block.west_tex_id, block.top_tex_id, block.bottom_tex_id),
+    switch (block.flags.model) {
+        .full_basic => writeBasicUV(arraylist, context, block.tex_id),
+        .full_barrel => writeBarrelUV(arraylist, context, block.tex_id, block.top_tex_id, block.bottom_tex_id),
+        .full_advanced => writeAdvancedUV(arraylist, context, block.tex_id, block.east_tex_id, block.south_tex_id, block.west_tex_id, block.top_tex_id, block.bottom_tex_id),
         .slab => writeSlabUV(arraylist, context, block.tex_id, block.top_tex_id, block.bottom_tex_id),
         .plant => writeNFacesUV(4, arraylist, block.tex_id),
-        .liquid => writeNFacesUV(1, arraylist, block.tex_id),
+        .liquid_still => writeNFacesUV(1, arraylist, block.tex_id),
     }
 }
 

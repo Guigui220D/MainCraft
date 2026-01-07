@@ -4,7 +4,7 @@ const std = @import("std");
 const io = @import("io");
 const tracy = @import("tracy");
 
-const blocks = @import("blocks.zig");
+const blocks = @import("blocks");
 const Context = @import("terrain").Context;
 const coord = @import("coord");
 

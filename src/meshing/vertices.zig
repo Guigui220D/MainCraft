@@ -10,14 +10,7 @@ const VertexIdT = io.properties.VertexIdT;
 const uv = @import("uv.zig");
 const Context = @import("terrain").Context;
 
-/// Enumeration of all block models
-pub const BlockModel = enum {
-    full,
-    slab,
-    plant,
-    liquid_still,
-    // and others...
-};
+const BlockModel = @import("blocks").BlockModel;
 
 /// Returns the number of vertices the block will use in that specific context
 pub inline fn vertexCount(model: BlockModel, context: Context.Occlusion) usize {
@@ -27,7 +20,7 @@ pub inline fn vertexCount(model: BlockModel, context: Context.Occlusion) usize {
 /// Returns the number of faces the block will use in that specific context
 pub inline fn faceCount(model: BlockModel, context: Context.Occlusion) usize {
     return switch (model) {
-        .full => context.faceCount(),
+        .full_basic, .full_barrel, .full_advanced => context.faceCount(),
         .slab => slabFaceCount(context),
         .plant => plant_face_count,
         .liquid_still => liquid_still_face_count,
@@ -49,7 +42,7 @@ pub inline fn writeVertices(arraylist: *std.ArrayList(f32), model: BlockModel, c
     const y = coords.y;
     const z = coords.z;
     switch (model) {
-        .full => writeCubeVertices(arraylist, x, y, z, context),
+        .full_basic, .full_barrel, .full_advanced => writeCubeVertices(arraylist, x, y, z, context),
         .slab => writeSlabVertices(arraylist, x, y, z, context),
         .plant => writePlantVertices(arraylist, x, y, z),
         .liquid_still => writeLiquidStillVertices(arraylist, x, y, z),

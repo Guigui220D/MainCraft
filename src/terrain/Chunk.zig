@@ -299,12 +299,12 @@ pub fn getContext(self: Chunk, pos: coord.Block) Context {
             .down = self.getLight(pos.neighbor(.down)),
         },
         .occlusion = .{
-            .north = block_n.full_block and !block_n.transparent,
-            .east = block_e.full_block and !block_e.transparent,
-            .south = block_s.full_block and !block_s.transparent,
-            .west = block_w.full_block and !block_w.transparent,
-            .up = block_u.full_block and !block_u.transparent,
-            .down = block_d.full_block and !block_d.transparent,
+            .north = block_n.isFull() and !block_n.flags.transparent,
+            .east = block_e.isFull() and !block_e.flags.transparent,
+            .south = block_s.isFull() and !block_s.flags.transparent,
+            .west = block_w.isFull() and !block_w.flags.transparent,
+            .up = block_u.isFull() and !block_u.flags.transparent,
+            .down = block_d.isFull() and !block_d.flags.transparent,
         },
     };
 }

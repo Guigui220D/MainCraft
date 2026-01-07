@@ -2,6 +2,7 @@
 
 const std = @import("std");
 const io = @import("io");
+const tracy = @import("tracy");
 
 const blocks = @import("blocks.zig");
 const Context = @import("terrain").Context;
@@ -17,6 +18,13 @@ const default_color: u32 = 0xffffffff;
 
 /// Write the vertex colors depending on the context and block id
 pub fn writeColors(arraylist: *std.ArrayList(u32), context: Context.Occlusion, vertex_count: usize, block_id: u8) void {
+    const zone = tracy.Zone.begin(.{
+        .name = "Write colors",
+        .src = @src(),
+        .color = .green4,
+    });
+    defer zone.end();
+
     switch (block_id) {
         // TODO: way to get block ids by names
         2 => { // Grass
@@ -50,6 +58,13 @@ const debug_face_dir = false;
 /// Apply light level to colors that already exist
 /// The vertices are used to determine face orientation 3 vertices match 4 color bytes
 pub fn adjustColors(colors: []u8, vertices: []const f32, context: Context) void {
+    const zone = tracy.Zone.begin(.{
+        .name = "Adjust colors",
+        .src = @src(),
+        .color = .green_yellow,
+    });
+    defer zone.end();
+
     // TODO: where to put those?
     const Vertex = coord.Vec3fs;
 

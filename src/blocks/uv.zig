@@ -2,6 +2,7 @@
 
 const std = @import("std");
 const io = @import("io");
+const tracy = @import("tracy");
 
 const blocks = @import("blocks.zig");
 const Context = @import("terrain").Context;
@@ -68,6 +69,13 @@ pub const UvType = enum {
 /// Write the right UV depending on the context and block id
 /// Assumes there is enough space left in the arraylist ((6 or 3) * face_count) depending of if using 2 tris or 1 quad per face
 pub fn writeUV(arraylist: *std.ArrayList(f32), context: Context.Occlusion, block_id: u8) void {
+    const zone = tracy.Zone.begin(.{
+        .name = "Write UV",
+        .src = @src(),
+        .color = .green3,
+    });
+    defer zone.end();
+
     const block = &blocks.table[block_id];
     switch (block.uv_type) {
         .basic => writeBasicUV(arraylist, context, block.tex_id),

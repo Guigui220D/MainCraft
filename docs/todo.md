@@ -16,6 +16,7 @@
 - [ ] Polish player controls 
 - [ ] Atmosphere and time-dependant sky lighting
 - [ ] Move shaders and raylib-specific ressources to raylib module
+- [ ] Make separate module for block meshing
 
 ## Raylib I/O
 

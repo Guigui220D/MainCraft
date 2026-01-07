@@ -210,26 +210,47 @@ fn generateSingleMesh(alloc: std.mem.Allocator, chunk: Chunk, offset: *usize, tr
         if (next_id > std.math.maxInt(c_ushort) - vertex_count)
             break;
 
-        // Add vertices
-        try vertices.ensureUnusedCapacity(rl.mem, vertex_count);
-        blocks.models.writeVertices(&vertices, block.block_model, xyz, context.occlusion);
+        // Resize buffers to fit if needed
+        {
+            const realloc_zone = tracy.Zone.begin(.{
+                .name = "Realloc vertices",
+                .src = @src(),
+                .color = .indian_red,
+            });
+            defer realloc_zone.end();
 
-        // Add triangles
-        try indices.ensureUnusedCapacity(rl.mem, face_count * 6);
-        blocks.models.materializeFaces(&indices, face_count, next_id, false);
+            try vertices.ensureUnusedCapacity(rl.mem, vertex_count);
+            try indices.ensureUnusedCapacity(rl.mem, face_count * 6);
+            try colors.ensureUnusedCapacity(rl.mem, vertex_count);
+            try texcoords.ensureUnusedCapacity(rl.mem, vertex_count * 2);
+        }
 
-        // Colors (later based on chunk lighting)
-        try colors.ensureUnusedCapacity(rl.mem, vertex_count);
-        blocks.coloring.writeColors(&colors, context.occlusion, vertex_count, block_id);
-        blocks.coloring.adjustColors(
-            @ptrCast(colors.items[(colors.items.len - vertex_count)..]),
-            vertices.items[(vertices.items.len - (vertex_count * 3))..],
-            context,
-        );
+        // Write mesh data for block
+        {
+            const write_zone = tracy.Zone.begin(.{
+                .name = "Write block mesh",
+                .src = @src(),
+                .color = .red,
+            });
+            defer write_zone.end();
 
-        // Add UV
-        try texcoords.ensureUnusedCapacity(rl.mem, vertex_count * 2);
-        blocks.uv.writeUV(&texcoords, context.occlusion, block_id);
+            // Add vertices
+            blocks.models.writeVertices(&vertices, block.block_model, xyz, context.occlusion);
+
+            // Add triangles
+            blocks.models.materializeFaces(&indices, face_count, next_id, false);
+
+            // Colors (later based on chunk lighting)
+            blocks.coloring.writeColors(&colors, context.occlusion, vertex_count, block_id);
+            blocks.coloring.adjustColors(
+                @ptrCast(colors.items[(colors.items.len - vertex_count)..]),
+                vertices.items[(vertices.items.len - (vertex_count * 3))..],
+                context,
+            );
+
+            // Add UV
+            blocks.uv.writeUV(&texcoords, context.occlusion, block_id);
+        }
 
         // Count up the vertex indices
         next_id += vertex_count;

@@ -274,6 +274,13 @@ pub fn getBlockMeta(self: Chunk, pos: coord.Block) u4 {
 }
 
 pub fn getContext(self: Chunk, pos: coord.Block) Context {
+    const zone = tracy.Zone.begin(.{
+        .name = "Get context",
+        .src = @src(),
+        .color = .dark_red,
+    });
+    defer zone.end();
+
     const block_n = blocks.table[getBlockIdTranscend(self, pos.neighbor(.north))];
     const block_e = blocks.table[getBlockIdTranscend(self, pos.neighbor(.east))];
     const block_s = blocks.table[getBlockIdTranscend(self, pos.neighbor(.south))];

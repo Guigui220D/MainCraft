@@ -3,6 +3,7 @@
 const std = @import("std");
 const coord = @import("coord");
 const io = @import("io");
+const tracy = @import("tracy");
 
 const VertexIdT = io.properties.VertexIdT;
 
@@ -37,6 +38,13 @@ pub inline fn faceCount(model: BlockModel, context: Context.Occlusion) usize {
 /// The amount of vertices written is equal to the vertexCount() of the same model and context
 /// Assumes there is enough space left in the arraylist
 pub inline fn writeVertices(arraylist: *std.ArrayList(f32), model: BlockModel, coords: coord.Block, context: Context.Occlusion) void {
+    const zone = tracy.Zone.begin(.{
+        .name = "Write vertices",
+        .src = @src(),
+        .color = .green1,
+    });
+    defer zone.end();
+
     const x = coords.x;
     const y = coords.y;
     const z = coords.z;
@@ -51,6 +59,13 @@ pub inline fn writeVertices(arraylist: *std.ArrayList(f32), model: BlockModel, c
 /// Write vertex indices for faces to the arraylist
 /// Assumes there is enough space left in the arraylist ((6 or 3) * face_count) depending of if using 2 tris or 1 quad per face
 pub fn materializeFaces(arraylist: *std.ArrayList(VertexIdT), face_count: VertexIdT, index_offset: VertexIdT, comptime quad_mode: bool) void {
+    const zone = tracy.Zone.begin(.{
+        .name = "Materialize faces",
+        .src = @src(),
+        .color = .green2,
+    });
+    defer zone.end();
+
     // Check the vertex index type can fit that many
     std.debug.assert(index_offset < std.math.maxInt(VertexIdT) - (face_count * 4));
 

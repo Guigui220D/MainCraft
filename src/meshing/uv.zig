@@ -73,6 +73,7 @@ pub fn writeUV(arraylist: *std.ArrayList(f32), context: Context.Occlusion, block
         .full_advanced => writeAdvancedUV(arraylist, context, block.tex_id, block.east_tex_id, block.south_tex_id, block.west_tex_id, block.top_tex_id, block.bottom_tex_id),
         .slab => writeSlabUV(arraylist, context, block.tex_id, block.top_tex_id, block.bottom_tex_id),
         .plant => writeNFacesUV(4, arraylist, block.tex_id),
+        .cactus => writeBarrelUV(arraylist, context, block.tex_id, block.top_tex_id, block.bottom_tex_id),
         .liquid_still => writeNFacesUV(1, arraylist, block.tex_id),
     }
 }

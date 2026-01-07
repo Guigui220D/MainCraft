@@ -67,7 +67,7 @@ pub const table = [256]Block{
     .{},
     // 48
     .{ .name = "stoneMoss", .tex_id = texpos(4, 2) },
-    .{},
+    .{ .name = "obsidian", .tex_id = texpos(5, 2) },
     .{},
     .{},
     .{ .name = "mobSpawner", .tex_id = texpos(1, 4), .flags = .{ .transparent = true } },
@@ -101,8 +101,8 @@ pub const table = [256]Block{
     .{},
     // 80
     .{},
-    .{ .name = "cactus", .tex_id = texpos(6, 4) },
-    .{},
+    .{ .name = "cactus", .tex_id = texpos(6, 4), .top_tex_id = texpos(5, 4), .bottom_tex_id = texpos(7, 4), .flags = .{ .model = .cactus, .transparent = true } },
+    .{ .name = "clay", .tex_id = texpos(8, 4) },
     .{},
     .{},
     .{},

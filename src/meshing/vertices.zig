@@ -23,6 +23,7 @@ pub inline fn faceCount(model: BlockModel, context: Context.Occlusion) usize {
         .full_basic, .full_barrel, .full_advanced => context.faceCount(),
         .slab => slabFaceCount(context),
         .plant => plant_face_count,
+        .cactus => cactusFaceCount(context),
         .liquid_still => liquid_still_face_count,
     };
 }
@@ -45,6 +46,7 @@ pub inline fn writeVertices(arraylist: *std.ArrayList(f32), model: BlockModel, c
         .full_basic, .full_barrel, .full_advanced => writeCubeVertices(arraylist, x, y, z, context),
         .slab => writeSlabVertices(arraylist, x, y, z, context),
         .plant => writePlantVertices(arraylist, x, y, z),
+        .cactus => writeCactusVertices(arraylist, x, y, z, context),
         .liquid_still => writeLiquidStillVertices(arraylist, x, y, z),
     }
 }
@@ -217,6 +219,54 @@ fn writePlantVertices(arraylist: *std.ArrayList(f32), x: i32, y: i32, z: i32) vo
     });
 }
 
+fn writeCactusVertices(arraylist: *std.ArrayList(f32), x: i32, y: i32, z: i32, context: Context.Occlusion) void {
+    const x1: f32 = @as(f32, @floatFromInt(x + 0));
+    const x2: f32 = @as(f32, @floatFromInt(x + 1));
+    const y1: f32 = @floatFromInt(y + 0);
+    const y2: f32 = @floatFromInt(y + 1);
+    const z1: f32 = @as(f32, @floatFromInt(z + 0));
+    const z2: f32 = @as(f32, @floatFromInt(z + 1));
+    const offset: f32 = (1.0 / 16.0);
+    arraylist.appendSliceAssumeCapacity(&.{
+        x1, y1, z1 + offset,
+        x2, y1, z1 + offset,
+        x2, y2, z1 + offset,
+        x1, y2, z1 + offset,
+    });
+    arraylist.appendSliceAssumeCapacity(&.{
+        x2 - offset, y1, z1,
+        x2 - offset, y1, z2,
+        x2 - offset, y2, z2,
+        x2 - offset, y2, z1,
+    });
+    arraylist.appendSliceAssumeCapacity(&.{
+        x2, y1, z2 - offset,
+        x1, y1, z2 - offset,
+        x1, y2, z2 - offset,
+        x2, y2, z2 - offset,
+    });
+    arraylist.appendSliceAssumeCapacity(&.{
+        x1 + offset, y1, z2,
+        x1 + offset, y1, z1,
+        x1 + offset, y2, z1,
+        x1 + offset, y2, z2,
+    });
+    if (!context.up)
+        arraylist.appendSliceAssumeCapacity(&.{
+            x2, y2, z2,
+            x1, y2, z2,
+            x1, y2, z1,
+            x2, y2, z1,
+        });
+    if (!context.down)
+        arraylist.appendSliceAssumeCapacity(&.{
+            x1, y1, z2,
+            x2, y1, z2,
+            x2, y1, z1,
+            x1, y1, z1,
+        });
+}
+
 fn writeLiquidStillVertices(arraylist: *std.ArrayList(f32), x: i32, y: i32, z: i32) void {
     const x1: f32 = @floatFromInt(x + 0);
     const x2: f32 = @floatFromInt(x + 1);
@@ -243,6 +293,16 @@ fn slabFaceCount(context: Context.Occlusion) usize {
     if (!context.south)
         ret += 1;
     if (!context.west)
+        ret += 1;
+    if (!context.down)
+        ret += 1;
+    return ret;
+}
+
+fn cactusFaceCount(context: Context.Occlusion) usize {
+    // Side faces always renders
+    var ret: usize = 4;
+    if (!context.up)
         ret += 1;
     if (!context.down)
         ret += 1;

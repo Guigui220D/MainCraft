@@ -39,6 +39,7 @@ pub const BlockModel = enum(u4) {
     full_advanced, // Cube with texture for each face
     slab,
     plant,
+    cactus,
     liquid_still,
     // and others...
 };

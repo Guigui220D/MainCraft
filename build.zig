@@ -143,6 +143,7 @@ pub fn build(b: *std.Build) void {
         },
     });
 
+    terrain_mod.addImport("engine", engine_mod);
     io_mod.addImport("engine", engine_mod);
 
     // Client executable

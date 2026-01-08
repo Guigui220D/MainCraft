@@ -38,6 +38,8 @@ model_dirty: u64,
 model_finalized: bool,
 /// Mutex for the chunk's data (not for the model)
 data_mutex: std.Thread.Mutex,
+/// Game time (tick) of last model update (exclusively for access by the modeler thread)
+last_update_time: i64,
 
 pub fn initEmpty(world: *World, alloc: std.mem.Allocator, coords: coord.Chunk) !*Chunk {
     const ret = try alloc.create(Chunk);
@@ -54,6 +56,7 @@ pub fn initEmpty(world: *World, alloc: std.mem.Allocator, coords: coord.Chunk) !
         .model_dirty = 0,
         .model_finalized = true,
         .data_mutex = .{},
+        .last_update_time = 0,
     };
 
     ret.blocks_data = try alloc.alloc(u8, block_data_len);
@@ -188,6 +191,13 @@ pub fn updateModel(self: *Chunk, alloc: std.mem.Allocator) void {
         .color = .yellow,
     });
     defer zone.end();
+
+    // Check that it wasn't already updated
+    // TODO: this is not ideal, we still update too many times in some cases (?)
+    const time = self.world.game.time.load(.unordered);
+    if (time <= self.last_update_time)
+        return;
+    self.last_update_time = time;
 
     // Generate new model
     // TODO: what to do on failure?

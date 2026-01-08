@@ -4,20 +4,23 @@ const std = @import("std");
 const coord = @import("coord");
 const net = @import("net");
 
+const Game = @import("engine").Game;
 const World = @This();
 const Chunk = @import("Chunk.zig");
 
 // TODO: store by pointer or value? depends on what the hashmap does
 const ChunkList = std.AutoHashMap(coord.Chunk, *Chunk);
 
+game: *Game,
 alloc: std.mem.Allocator,
 chunk_list: ChunkList,
 dirty_priority_counter: u64,
 modeling_thread_pool: *std.Thread.Pool,
 meshes_mutex: std.Thread.Mutex,
 
-pub fn init(alloc: std.mem.Allocator) !World {
+pub fn init(game: *Game, alloc: std.mem.Allocator) !World {
     var ret: World = .{
+        .game = game,
         .alloc = alloc,
         .chunk_list = .init(alloc),
         .dirty_priority_counter = 1,
@@ -205,6 +208,7 @@ pub fn setBlockIdAndMetadata(self: *World, pos: coord.Block, block_id: u8, block
 const PendingModeling = struct {
     priority: usize,
     coords: coord.Chunk,
+    request_time: i64,
 
     fn lessThan(context: void, a: PendingModeling, b: PendingModeling) bool {
         _ = context;
@@ -220,6 +224,8 @@ pub fn updateModels(self: *World) !void {
     var buf: [8]PendingModeling = undefined;
     var pending_arraylist = std.ArrayList(PendingModeling).initBuffer(&buf);
 
+    const time = self.game.time.load(.unordered);
+
     // Find dirty chunks
     while (it.next()) |entry| {
         const chunk = entry.value_ptr.*;
@@ -228,6 +234,7 @@ pub fn updateModels(self: *World) !void {
             pending_arraylist.appendBounded(.{
                 .coords = chunk.coords,
                 .priority = chunk.model_dirty,
+                .request_time = time,
             }) catch break;
 
             // Unset flag
@@ -241,8 +248,7 @@ pub fn updateModels(self: *World) !void {
 
     // Add tasks to pool
     for (pending_arraylist.items) |pending| {
-        // TODO: a chunk may be added several times to this queue before it is updated if the thread is busy enough
-        // do not add it if the ID is already present OR add a request_date field to the PendingModeling to check when worker reaches it
+        // Add to work queue
         if (self.getChunk(pending.coords)) |chunk|
             try self.modeling_thread_pool.spawn(Chunk.updateModel, .{ chunk, self.alloc });
     }

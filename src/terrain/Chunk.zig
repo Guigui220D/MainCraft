@@ -165,9 +165,6 @@ pub fn setChunkData(self: *Chunk, data: []const u8, x1: i32, y1: i32, z1: i32, x
 }
 
 pub fn destroyChunk(self: *Chunk, alloc: std.mem.Allocator) void {
-    self.data_mutex.lock();
-    defer self.data_mutex.unlock();
-
     self.deinit(alloc);
     if (self.model) |model|
         model.deinit(alloc);

@@ -211,7 +211,6 @@ fn receiverThread(self: *Client) !void {
         // Read packet
         const incoming_packet = net.readPacket(self.alloc, reader) catch |e| {
             // Stop server on error (TODO: recoverable errors?)
-            self.server_running.store(false, .release);
             if (e == error.EndOfStream) {
                 std.debug.print("Server closed socket.\n", .{});
             } else {
@@ -220,6 +219,7 @@ fn receiverThread(self: *Client) !void {
                     std.debug.dumpStackTrace(trace.*);
                 }
             }
+            self.server_running.store(false, .release);
             continue;
         };
 

@@ -65,7 +65,10 @@ pub fn init(_: std.mem.Allocator) !GameWindow {
 }
 
 pub fn hasClosed(_: GameWindow) bool {
-    return rl.windowShouldClose();
+    if (rl.windowShouldClose()) {
+        std.debug.print("Window closed!\n", .{});
+        return true;
+    } else return false;
 }
 
 pub fn update(self: *GameWindow, delta: f32) !void {

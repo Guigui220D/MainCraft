@@ -28,7 +28,7 @@ pub fn init(alloc: std.mem.Allocator) !World {
     ret.modeling_thread_pool = try alloc.create(std.Thread.Pool);
     errdefer alloc.destroy(ret.modeling_thread_pool);
 
-    try ret.modeling_thread_pool.init(.{ .allocator = alloc });
+    try ret.modeling_thread_pool.init(.{ .allocator = alloc, .n_jobs = 4 });
     errdefer ret.modeling_thread_pool.deinit();
 
     return ret;
@@ -201,6 +201,7 @@ pub fn setBlockIdAndMetadata(self: *World, pos: coord.Block, block_id: u8, block
     }
 }
 
+// TODO: move elsewhere
 const PendingModeling = struct {
     priority: usize,
     coords: coord.Chunk,
@@ -235,10 +236,13 @@ pub fn updateModels(self: *World) !void {
     }
 
     // Sort list
+    // TODO: check if the ordering is right (it seems spawn uses prepend and worker uses pop-first)
     std.sort.insertion(PendingModeling, pending_arraylist.items, {}, PendingModeling.lessThan);
 
     // Add tasks to pool
     for (pending_arraylist.items) |pending| {
+        // TODO: a chunk may be added several times to this queue before it is updated if the thread is busy enough
+        // do not add it if the ID is already present OR add a request_date field to the PendingModeling to check when worker reaches it
         if (self.getChunk(pending.coords)) |chunk|
             try self.modeling_thread_pool.spawn(Chunk.updateModel, .{ chunk, self.alloc });
     }

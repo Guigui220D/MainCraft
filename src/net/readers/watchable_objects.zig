@@ -4,7 +4,7 @@ const std = @import("std");
 const net = @import("../net.zig");
 const string = @import("../string.zig");
 const item_stack = @import("item_stack.zig");
-const WatchableObject = @import("entities").WatchableObject;
+const WatchableObject = @import("engine").entities.WatchableObject;
 
 /// Interpret array of watchable objects from the stream
 /// Caller owns the list and contained strings

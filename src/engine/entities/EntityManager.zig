@@ -3,15 +3,19 @@
 pub const std = @import("std");
 const coord = @import("coord");
 
+const Game = @import("../Game.zig");
+
 const Entity = @import("Entity.zig");
 
 const EntityManager = @This();
 
+game: *Game,
 entities: std.AutoArrayHashMap(i32, *Entity),
 alloc: std.mem.Allocator,
 
-pub fn init(alloc: std.mem.Allocator) !EntityManager {
+pub fn init(alloc: std.mem.Allocator, game: *Game) !EntityManager {
     return .{
+        .game = game,
         .alloc = alloc,
         .entities = .init(alloc),
     };
@@ -35,7 +39,7 @@ pub fn addEntity(self: *EntityManager, id: i32, pos: coord.Vec3f, ent_type: Enti
         .id = id,
         .pos = pos,
         .data = .initData(ent_type),
-        .entity_model = try .initForEntity(self.alloc, new_ent),
+        .entity_model = try .initForEntity(self.alloc, new_ent, self.game.window),
     };
     errdefer new_ent.entity_model.deinit(self.alloc);
 
@@ -56,7 +60,7 @@ pub fn addOtherPlayer(self: *EntityManager, id: i32, pos: coord.Vec3f, name: []c
         .id = id,
         .pos = pos,
         .data = .{ .player = .{ .username = name } },
-        .entity_model = try .initForEntity(self.alloc, new_ent),
+        .entity_model = try .initForEntity(self.alloc, new_ent, self.game.window),
     };
     errdefer new_ent.entity_model.deinit(self.alloc);
 

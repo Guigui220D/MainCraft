@@ -15,42 +15,8 @@ const ChunkModel = @This();
 
 // TODO: make the meshes on a separate thread
 
-// Material
-// TODO: ressource manager
-var texture: rl.Texture = undefined;
-var material: rl.Material = undefined;
-var shader_transparency: rl.Shader = undefined;
-var material_transparency: rl.Material = undefined;
-
 meshes: []rl.Mesh,
 transparent_meshes: []rl.Mesh,
-
-/// Init the meshing system (static ressources)
-pub fn initMesher() !void {
-    // Load texture from jar
-    texture = try rl.loadTexture("res/jar/minecraft/terrain.png");
-    errdefer texture.unload();
-
-    // Init materials
-    material = try rl.loadMaterialDefault();
-    errdefer material.unload();
-    material.maps[0].texture = texture;
-
-    shader_transparency = try rl.loadShader(null, "res/shaders/chunk_transparent.fs");
-    errdefer shader_transparency.unload();
-
-    material_transparency = try rl.loadMaterialDefault();
-    errdefer material_transparency.unload();
-    material_transparency.maps[0].texture = texture;
-    material_transparency.shader = shader_transparency;
-}
-
-/// Deinit the meshing system (static ressources)
-pub fn deinitMesher() void {
-    material.unload();
-    material_transparency.unload();
-    texture.unload();
-}
 
 /// Prepare the ChunkModel for a chunk (part of the API)
 pub fn generateForChunk(alloc: std.mem.Allocator, chunk: Chunk) !ChunkModel {
@@ -78,18 +44,18 @@ pub fn generateForChunk(alloc: std.mem.Allocator, chunk: Chunk) !ChunkModel {
     };
 }
 
-pub fn draw(self: ChunkModel, pos: coord.Chunk) void {
+pub fn draw(self: ChunkModel, pos: coord.Chunk, material: *const rl.Material) void {
     // Draw chunk
     const transform: rl.Matrix = .translate(@as(f32, @floatFromInt(pos.x * 16)), 0, @as(f32, @floatFromInt(pos.z * 16)));
     for (self.meshes) |mesh|
-        rl.drawMesh(mesh, material, transform);
+        rl.drawMesh(mesh, material.*, transform);
 }
 
-pub fn drawTransparentLayer(self: ChunkModel, pos: coord.Chunk) void {
+pub fn drawTransparentLayer(self: ChunkModel, pos: coord.Chunk, material: *const rl.Material) void {
     // Draw chunk
     const transform: rl.Matrix = .translate(@as(f32, @floatFromInt(pos.x * 16)), 0, @as(f32, @floatFromInt(pos.z * 16)));
     for (self.transparent_meshes) |mesh|
-        rl.drawMesh(mesh, material_transparency, transform);
+        rl.drawMesh(mesh, material.*, transform);
 }
 
 pub fn deinit(self: ChunkModel, alloc: std.mem.Allocator) void {

@@ -7,7 +7,7 @@ const engine = @import("engine");
 const coord = @import("coord");
 const terrain = @import("terrain");
 const entities = @import("entities");
-
+const RessourceManager = @import("RessourceManager.zig");
 const vec = @import("vec.zig");
 const ChunkModel = @import("ChunkModel.zig");
 
@@ -32,8 +32,10 @@ f3_str: [:0]const u8 = undefined,
 freecam: bool = false,
 wiremesh: bool = false,
 game: ?*engine.Game = null,
+ressource_manager: RessourceManager,
+chunk_mat: *const rl.Material,
 
-pub fn init(_: std.mem.Allocator) !GameWindow {
+pub fn init(alloc: std.mem.Allocator) !GameWindow {
     rl.setConfigFlags(.{ .window_resizable = true, .window_highdpi = true });
     rl.initWindow(screenWidth, screenHeight, "Maincraft by Guigui220D");
     errdefer rl.closeWindow();
@@ -44,11 +46,10 @@ pub fn init(_: std.mem.Allocator) !GameWindow {
 
     rl.setTraceLogLevel(.warning);
 
-    try ChunkModel.initMesher();
-    errdefer ChunkModel.deinitMesher();
-
-    compass = try rl.loadModel("res/compass.glb");
-    errdefer compass.unload();
+    var res_mana = try RessourceManager.init(alloc);
+    errdefer res_mana.deinit();
+    errdefer res_mana.unloadAll();
+    try res_mana.loadAll();
 
     return .{
         .camera = rl.Camera{
@@ -61,6 +62,8 @@ pub fn init(_: std.mem.Allocator) !GameWindow {
         .cube_position = .init(0, 0, 0),
         .cam_rot = .zero(),
         .cam_rel_pos = .zero(),
+        .ressource_manager = res_mana,
+        .chunk_mat = res_mana.materials.get("chunk").?,
     };
 }
 
@@ -204,7 +207,7 @@ pub fn drawWorld(self: GameWindow) void {
         }
         // Draw the solid part of the chunk
         if (chunk.model) |model| {
-            model.draw(entry.key_ptr.*);
+            model.draw(entry.key_ptr.*, self.chunk_mat);
         }
     }
 
@@ -212,7 +215,7 @@ pub fn drawWorld(self: GameWindow) void {
     chunk_it = game.world.chunk_list.iterator();
     while (chunk_it.next()) |entry| {
         if (entry.value_ptr.*.model) |model| {
-            model.drawTransparentLayer(entry.key_ptr.*);
+            model.drawTransparentLayer(entry.key_ptr.*, self.chunk_mat);
         }
     }
 
@@ -267,8 +270,8 @@ pub fn endDraw(_: GameWindow) void {
     rl.endDrawing();
 }
 
-pub fn deinit(_: GameWindow) void {
-    compass.unload();
-    ChunkModel.deinitMesher();
+pub fn deinit(self: *GameWindow) void {
     rl.closeWindow();
+    self.ressource_manager.unloadAll();
+    self.ressource_manager.deinit();
 }

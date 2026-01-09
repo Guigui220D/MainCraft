@@ -83,7 +83,6 @@ fn encodeDecodeTest(string: []const u8, comptime is_ascii: bool) !void {
         try writeString(&writer, string);
     }
 
-    // TODO: is this the right way to access the fixed writer string?
     var reader = std.Io.Reader.fixed(writer.buffered());
     // Read back
     const result = try readString(&reader, alloc, 128);

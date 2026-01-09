@@ -26,15 +26,11 @@ pub fn receive(alloc: std.mem.Allocator, stream: *std.Io.Reader) !@This() {
 
     // Data size isn't a separate field, it is with the data slice
     const data_size = try stream.takeInt(u32, net.endianness);
+    var limited_reader_buf: [1024]u8 = undefined;
+    var limited_reader = std.io.Reader.limited(stream, .limited(data_size), &limited_reader_buf);
 
-    // Read chunk data
-    // TODO: do I even need to buffer to read or can I stream it?
-    const buf = try stream.readAlloc(alloc, @intCast(data_size));
-    defer alloc.free(buf);
-    var buf_reader = std.Io.Reader.fixed(buf);
-
-    // Init flate decompressor, and flush it all
-    var decomp = std.compress.flate.Decompress.init(&buf_reader, .zlib, &.{});
+    // Read chunk data using flate decompressor
+    var decomp = std.compress.flate.Decompress.init(&limited_reader.interface, .zlib, &.{});
     ret.data = try decomp.reader.allocRemaining(alloc, .unlimited);
     errdefer alloc.free(ret.data);
 

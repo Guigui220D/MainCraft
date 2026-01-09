@@ -5,7 +5,7 @@ const net = @import("net");
 const io = @import("io");
 const tracy = @import("tracy");
 
-const Entities = @import("entities").EntityManager;
+const Entities = @import("entities.zig").EntityManager;
 const World = @import("terrain").World;
 const Client = @import("Client.zig");
 const Game = @This();
@@ -46,7 +46,7 @@ pub fn init(game: *Game, alloc: std.mem.Allocator, client: *Client, window: *io.
     game.world = try World.init(alloc);
     errdefer game.world.deinit();
 
-    game.entities = try Entities.init(alloc);
+    game.entities = try Entities.init(alloc, game);
     errdefer game.entities.deinit();
 
     game.player = .init(game);
@@ -154,20 +154,25 @@ pub fn handlePacket(self: *Game, packet: net.InboundPacket) !void {
             try self.entities.removeEntity(stroy.entity_id);
         },
         .rel_entity_move_31 => |move| {
-            // TODO: no need to crash when the entity is not found
-            self.entities.get(move.entity_id).?.move(
-                .fromIntsDiv32(move.x_position, move.y_position, move.z_position),
-            );
+            if (self.entities.get(move.entity_id)) |entity| {
+                entity.move(
+                    .fromIntsDiv32(move.x_position, move.y_position, move.z_position),
+                );
+            }
         },
         .rel_entity_move_look_33 => |move| {
-            self.entities.get(move.entity_id).?.move(
-                .fromIntsDiv32(move.x_position, move.y_position, move.z_position),
-            );
+            if (self.entities.get(move.entity_id)) |entity| {
+                entity.move(
+                    .fromIntsDiv32(move.x_position, move.y_position, move.z_position),
+                );
+            }
         },
         .entity_teleport_34 => |tp| {
-            self.entities.get(tp.entity_id).?.setPosition(
-                .fromIntsDiv32(tp.x_position, tp.y_position, tp.z_position),
-            );
+            if (self.entities.get(tp.entity_id)) |entity| {
+                entity.move(
+                    .fromIntsDiv32(tp.x_position, tp.y_position, tp.z_position),
+                );
+            }
         },
         .pre_chunk_50 => |pc| {
             try self.world.doPreChunk(.{ .x = pc.x_position, .z = pc.z_position }, pc.mode);

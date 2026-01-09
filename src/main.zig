@@ -30,5 +30,5 @@ pub fn main() !void {
 
     std.log.info("Running frontend \"{s}\"", .{io.frontend_name});
     try io.main(alloc);
-    std.log.info("Game stopped", .{});
+    std.log.info("Exitting", .{});
 }

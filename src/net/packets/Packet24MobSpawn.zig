@@ -2,7 +2,7 @@
 
 const std = @import("std");
 const net = @import("../net.zig");
-const WatchableObject = @import("entities").WatchableObject;
+const WatchableObject = @import("engine").entities.WatchableObject;
 const wo_reader = @import("../readers/watchable_objects.zig");
 
 entity_id: i32,

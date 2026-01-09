@@ -4,37 +4,26 @@
 const std = @import("std");
 const rl = @import("raylib");
 const coord = @import("coord");
-const Entity = @import("entities").Entity;
+const Entity = @import("engine").entities.Entity;
+const GameWindow = @import("GameWindow.zig");
 
 const EntityModel = @This();
 
 const frame_duration_us = 10000;
 
-var player_model: ?rl.Model = null;
-var player_anims: ?[]rl.ModelAnimation = null;
-
 entity: *Entity,
 anim_frame: i32,
 animation: ?*rl.ModelAnimation,
-model: ?*rl.Model,
+model: ?*const rl.Model,
 time_buf_us: usize,
 
-pub fn initForEntity(_: std.mem.Allocator, entity: *Entity) !EntityModel {
-    // TODO: asset manager
-    if (player_model == null) {
-        player_model = try rl.loadModel("res/kenney/character-a.glb");
-        std.debug.print("loaded model\n", .{});
-        // Doesn't work!
-        //player_anims = try rl.loadModelAnimations("res/kenney/character-a.glb");
-        std.debug.print("loaded anims\n", .{});
-    }
-
+pub fn initForEntity(_: std.mem.Allocator, entity: *Entity, game_window: *GameWindow) !EntityModel {
     return .{
         .entity = entity,
         .anim_frame = 0,
         .time_buf_us = 0,
         .animation = null,
-        .model = if (entity.data == .player) &player_model.? else null,
+        .model = if (entity.data == .player) game_window.ressource_manager.models.get("character-a.glb").? else null,
     };
 }
 

@@ -118,8 +118,8 @@ pub fn deinit(self: *Client) void {
 
     self.socket.close();
 
-    self.out_thread.join();
-    self.in_thread.join();
+    self.out_thread.detach();
+    self.in_thread.detach();
 
     // Free remaining packets
     while (self.in_queue.front()) |new_packet| {

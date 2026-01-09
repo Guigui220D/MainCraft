@@ -158,13 +158,15 @@ pub fn update(self: *GameWindow, delta: f32) !void {
         const pos_block = pos.getBlock();
         const pos_chunk = pos_block.getChunk();
         const pos_in_chunk = pos_block.getPosInChunk();
-        self.f3_str = try std.fmt.bufPrintZ(&self.f3_buf, "camera: {}\nplayer: {}\nblock: {}\nchunk: {}\nin chunk: {}\nfocused: {}", .{
+        const time = game.time.load(.unordered);
+        self.f3_str = try std.fmt.bufPrintZ(&self.f3_buf, "camera: {}\nplayer: {}\nblock: {}\nchunk: {}\nin chunk: {}\nfocused: {}\ntime: {}\n", .{
             cam_pos,
             pos,
             pos_block,
             pos_chunk,
             pos_in_chunk,
             self.focused,
+            time,
         });
     }
 }

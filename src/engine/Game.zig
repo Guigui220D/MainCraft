@@ -31,6 +31,10 @@ world: World,
 entities: Entities,
 /// Player
 player: Player,
+/// Time
+time: std.atomic.Value(i64),
+/// Server time: when the server gives us a time that is < than our own time, store it in server time to catch up
+server_time: i64,
 
 /// Inits a game state
 pub fn init(game: *Game, alloc: std.mem.Allocator, client: *Client, window: *io.GameWindow) !void {
@@ -41,6 +45,8 @@ pub fn init(game: *Game, alloc: std.mem.Allocator, client: *Client, window: *io.
 
     // General variables
     game.last_tick = 0;
+    game.time = .init(0);
+    game.server_time = 0;
 
     // Game state components
     game.world = try World.init(alloc);
@@ -90,6 +96,19 @@ fn tick(self: *Game) !void {
     });
     defer zone.end();
 
+    // Increment time
+    {
+        const time = self.time.load(.unordered);
+        if (self.server_time != 0) {
+            self.server_time += 1;
+            if (self.server_time >= time) {
+                self.server_time = 0;
+            }
+        } else {
+            self.time.store(time + 1, .unordered);
+        }
+    }
+
     if (self.client.is_connected) {
         const position_packet = self.player.makePositionPacket();
         self.client.enqueuePacket(position_packet);
@@ -104,8 +123,15 @@ pub fn handlePacket(self: *Game, packet: net.InboundPacket) !void {
             std.log.info("Chat: \"{s}\"", .{chat.message});
         },
         .update_time_4 => |time| {
-            _ = time;
-            // TODO: handle time
+            const current_time = self.time.load(.unordered);
+            if (current_time > time.time) {
+                // We are too early
+                self.server_time = time.time;
+                std.log.debug("Clock too early!", .{});
+            } else {
+                // We are on time or late
+                self.time.store(time.time, .unordered);
+            }
         },
         .player_look_move_13 => |plm| {
             self.player.resetPosition(.{

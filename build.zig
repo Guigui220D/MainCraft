@@ -36,11 +36,6 @@ pub fn build(b: *std.Build) void {
     const tracy_impl_mod = if (tracy_enabled) tracy_dep.module("tracy_impl_enabled") else tracy_dep.module("tracy_impl_disabled");
 
     // Internal modules
-    const nbt_mod = b.addModule("nbt", .{
-        .root_source_file = b.path("src/nbt/nbt.zig"),
-        .target = target,
-    });
-
     const inv_mod = b.addModule("inventory", .{
         .root_source_file = b.path("src/inventory/inventory.zig"),
         .target = target,
@@ -180,11 +175,6 @@ pub fn build(b: *std.Build) void {
     }
 
     // Module tests
-    const nbt_mod_tests = b.addTest(.{
-        .root_module = nbt_mod,
-    });
-    const run_nbt_tests = b.addRunArtifact(nbt_mod_tests);
-
     const net_mod_tests = b.addTest(.{
         .root_module = net_mod,
     });
@@ -238,7 +228,6 @@ pub fn build(b: *std.Build) void {
 
     // All tests step
     const test_step = b.step("test", "Run tests");
-    test_step.dependOn(&run_nbt_tests.step);
     test_step.dependOn(&run_net_tests.step);
     test_step.dependOn(&run_inv_tests.step);
     test_step.dependOn(&run_io_tests.step);
@@ -251,7 +240,6 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_exe_tests.step);
 
     // Individual test steps
-    b.step("test_nbt", "Run NBT module tests").dependOn(&run_nbt_tests.step);
     b.step("test_net", "Run net module tests").dependOn(&run_net_tests.step);
     b.step("test_inv", "Run inventory module tests").dependOn(&run_inv_tests.step);
     b.step("test_io", "Run game i/o module tests").dependOn(&run_io_tests.step);

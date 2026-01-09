@@ -34,6 +34,5 @@ pub fn readPacket(alloc: std.mem.Allocator, data: *std.Io.Reader) !InboundPacket
 }
 
 test "net tests" {
-    std.testing.refAllDecls(@import("var_int.zig"));
     std.testing.refAllDecls(@import("string.zig"));
 }

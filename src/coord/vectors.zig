@@ -8,6 +8,14 @@ const Direction = @import("direction.zig").Direction;
 pub const Chunk = struct {
     x: i32 = 0,
     z: i32 = 0,
+
+    /// Adds two chunk positions
+    pub inline fn add(a: Chunk, b: Chunk) Chunk {
+        return .{
+            .x = a.x + b.x,
+            .z = a.z + b.z,
+        };
+    }
 };
 
 /// Global or local (within chunk) block coordinates

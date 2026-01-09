@@ -246,10 +246,7 @@ pub fn getLightTranscend(self: Chunk, pos: coord.Block) LightLevel {
         // Neighbor block
         // Relative chunk position
         const chunk_rel = pos.getChunk();
-        // TODO: vector math helpers for concise code
-        var other_chunk_pos = self.coords;
-        other_chunk_pos.x += chunk_rel.x;
-        other_chunk_pos.z += chunk_rel.z;
+        const other_chunk_pos = self.coords.add(chunk_rel);
 
         if (self.world.getChunk(other_chunk_pos)) |other_chunk| {
             return other_chunk.getLight(pos.getPosInChunk());

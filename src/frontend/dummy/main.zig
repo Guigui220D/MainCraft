@@ -20,5 +20,5 @@ pub fn main(default_alloc: std.mem.Allocator) !void {
     window.enterGame(&client.game);
     defer window.exitGame();
 
-    while (try client.update()) {}
+    while (try client.update(0.0)) {}
 }

@@ -167,12 +167,12 @@ pub fn update(self: *GameWindow, delta: f32) !void {
 }
 
 pub fn enterGame(self: *GameWindow, game: *engine.Game) void {
-    std.debug.print("Game started!\n", .{});
+    std.log.info("Game started!", .{});
     self.game = game;
 }
 
 pub fn exitGame(self: *GameWindow) void {
-    std.debug.print("Game stopped!\n", .{});
+    std.log.info("Game stopped!", .{});
     self.game = null;
 }
 

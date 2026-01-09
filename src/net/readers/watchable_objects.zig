@@ -49,7 +49,7 @@ pub fn read(alloc: std.mem.Allocator, stream: *std.Io.Reader) ![]WatchableObject
             } },
             else => {
                 std.debug.print("Unexpected byte {}\n", .{b});
-                continue;
+                unreachable;
             },
         };
 

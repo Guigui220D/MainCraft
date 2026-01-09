@@ -38,8 +38,9 @@ pub fn initForEntity(_: std.mem.Allocator, entity: *Entity) !EntityModel {
     };
 }
 
-pub fn startAnimation(self: *EntityModel, anim: u8) void {
-    std.debug.print("Entity {}: animation {}\n", .{ self.entity.id, anim });
+pub fn startAnimation(_: *EntityModel, _: u8) void {
+    //std.debug.print("Entity {}: animation {}\n", .{ self.entity.id, anim });
+    // TODO: animations
 }
 
 pub fn deinit(_: EntityModel, _: std.mem.Allocator) void {}

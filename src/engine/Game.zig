@@ -101,7 +101,7 @@ fn tick(self: *Game) !void {
 pub fn handlePacket(self: *Game, packet: net.InboundPacket) !void {
     switch (packet) {
         .chat_3 => |chat| {
-            std.debug.print("\"{s}\"\n", .{chat.message});
+            std.log.info("Chat: \"{s}\"", .{chat.message});
         },
         .update_time_4 => |time| {
             _ = time;
@@ -147,7 +147,7 @@ pub fn handlePacket(self: *Game, packet: net.InboundPacket) !void {
                 //@enumFromInt(sp.entity_type),
                 .pig, // Before I fix it
             ) catch |e| {
-                std.debug.print("Couldn't add entity {}, error {}\n", .{ sp.entity_id, e });
+                std.log.err("Couldn't add entity {}, error {}", .{ sp.entity_id, e });
             };
         },
         .destroy_entity_29 => |stroy| {

@@ -16,8 +16,17 @@ pub fn main(default_alloc: std.mem.Allocator) !void {
 
     var client: engine.Client = undefined;
 
-    try client.init(alloc, &window, "localhost", 25565);
+    std.log.info("Connecting...", .{});
+    client.init(alloc, &window, "localhost", 25565) catch |e| {
+        if (e == error.CouldNotConnect) {
+            std.log.err("Could not connect to server!", .{});
+            return;
+        } else {
+            return e;
+        }
+    };
     defer client.deinit();
+    std.log.debug("Client started", .{});
 
     window.enterGame(&client.game);
     defer window.exitGame();

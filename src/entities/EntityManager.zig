@@ -44,7 +44,7 @@ pub fn addEntity(self: *EntityManager, id: i32, pos: coord.Vec3f, ent_type: Enti
 
     try self.entities.put(id, new_ent);
 
-    std.debug.print("Added {} entity {} at {any}\n", .{ ent_type, id, pos });
+    std.log.debug("Added {} entity {} at {any}", .{ ent_type, id, pos });
 }
 
 pub fn addOtherPlayer(self: *EntityManager, id: i32, pos: coord.Vec3f, name: []const u8) !void {
@@ -65,18 +65,18 @@ pub fn addOtherPlayer(self: *EntityManager, id: i32, pos: coord.Vec3f, name: []c
 
     try self.entities.put(id, new_ent);
 
-    std.debug.print("Added player {} named \"{s}\" at {any}\n", .{ id, name, pos });
+    std.log.debug("Added player {} named \"{s}\" at {any}", .{ id, name, pos });
 }
 
 pub fn removeEntity(self: *EntityManager, id: i32) !void {
     const kv = self.entities.fetchSwapRemove(id) orelse {
-        std.debug.print("Couldn't remove entity {} (doesn't exist)\n", .{id});
+        std.log.err("Couldn't remove entity {} (doesn't exist)", .{id});
         return;
     };
 
     self.alloc.destroy(kv.value);
 
-    std.debug.print("Removed entity {}\n", .{id});
+    std.log.debug("Removed entity {}", .{id});
 }
 
 pub fn get(self: *EntityManager, entity_id: i32) ?*Entity {

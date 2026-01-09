@@ -23,8 +23,12 @@ pub fn main() !void {
     defer _ = gpa.deinit();
     const alloc = gpa.allocator();
 
+    std.log.debug("Loading network", .{});
     try network.init();
     defer network.deinit();
+    std.log.debug("Network ready", .{});
 
+    std.log.info("Running frontend \"{s}\"", .{io.frontend_name});
     try io.main(alloc);
+    std.log.info("Game stopped", .{});
 }

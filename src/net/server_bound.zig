@@ -25,6 +25,7 @@ pub const OutboundPacket = union(Packets) {
                     try payload.send(stream);
                 } else {
                     std.debug.print("No send function for queued packet!\n", .{});
+                    unreachable;
                 }
             },
         }

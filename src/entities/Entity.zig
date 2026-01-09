@@ -61,8 +61,9 @@ pub const Data = union(Type) {
             .wolf => .{ .wolf = undefined },
             .player => .{ .player = undefined },
             _ => {
-                std.debug.print("Unexpected entity type: {}\n", .{entity_type});
-                return undefined;
+                std.log.err("Unexpected entity type: {}", .{entity_type});
+                // unreachable
+                return .{ .pig = undefined }; // Temporary placeholder to avoid crashing
             },
         };
     }

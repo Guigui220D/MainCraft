@@ -138,8 +138,6 @@ pub fn deinit(self: *Client) void {
     self.game.deinit();
 }
 
-// TODO: better logging
-
 /// Update the client
 pub fn update(self: *Client, delta: f32) !bool {
     const zone = tracy.Zone.begin(.{
@@ -157,16 +155,22 @@ pub fn update(self: *Client, delta: f32) !bool {
             self.in_queue.pop();
 
             switch (packet) {
-                .login_1 => |login| {
-                    std.debug.print("Login successful! {any}\n", .{login});
+                .login_1 => {
+                    std.log.info("Login successful!", .{});
                     self.is_connected = true;
                 },
-                .handshake_2 => {
-                    std.debug.print("Shaked hands!\n", .{});
-                    self.enqueuePacket(net.server_bound.Packet1Login{ .username = "MainCraft1" });
+                .handshake_2 => |handshake| {
+                    std.log.info("Shaked hands!", .{});
+                    if (handshake.username.len == 1 and handshake.username[0] == '-') {
+                        std.log.debug("Server is not authenticated", .{});
+                        self.enqueuePacket(net.server_bound.Packet1Login{ .username = "MainCraft1" });
+                    } else {
+                        std.log.err("Server is authenticated! Not supported yet, stopping", .{});
+                        self.server_running.store(false, .release);
+                    }
                 },
                 .kick_disconnect_255 => |kick| {
-                    std.debug.print("Kicked! Reason: \"{s}\"\n", .{kick.reason});
+                    std.log.info("Kicked! Reason: \"{s}\"", .{kick.reason});
                     // Stop client
                     self.server_running.store(false, .release);
                 },
@@ -180,7 +184,7 @@ pub fn update(self: *Client, delta: f32) !bool {
         const now = std.time.milliTimestamp();
         const last_packet = self.last_packet_ms.load(.unordered);
         if (now - last_packet > 3000) {
-            std.debug.print("Timeout! Disconnecting.\n", .{});
+            std.log.err("Timeout (3s)! Disconnecting", .{});
             self.server_running.store(false, .release);
         }
 
@@ -198,7 +202,7 @@ pub fn enqueuePacket(self: *Client, packet: anytype) void {
     const pack = if (@TypeOf(packet) == net.OutboundPacket) packet else net.OutboundPacket.encapsulate(packet);
 
     if (!self.out_queue.tryPush(pack)) {
-        std.debug.print("Couldn't enqueue outbounds packet! Something is stuck...", .{});
+        std.log.err("Couldn't enqueue outbounds packet! Something is stuck...", .{});
         self.server_running.store(false, .release);
     }
 }
@@ -213,9 +217,9 @@ fn receiverThread(self: *Client) !void {
             // Stop server on error (TODO: recoverable errors?)
             self.server_running.store(false, .release);
             if (e == error.EndOfStream) {
-                std.debug.print("Server closed socket.\n", .{});
+                std.log.err("Server closed socket.", .{});
             } else {
-                std.debug.print("{}\n", .{e});
+                std.log.err("{}", .{e});
                 if (@errorReturnTrace()) |trace| {
                     std.debug.dumpStackTrace(trace.*);
                 }

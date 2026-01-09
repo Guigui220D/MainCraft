@@ -24,7 +24,7 @@ pub fn readPacket(alloc: std.mem.Allocator, data: *std.Io.Reader) !InboundPacket
             const field = std.meta.fields(InboundPacket)[@intFromEnum(id)];
 
             const packet = field.type.receive(alloc, data) catch |err| {
-                std.debug.print("Error when interpreting packet {}\n", .{id});
+                std.log.err("Error when interpreting packet {}", .{id});
                 return err;
             };
 

@@ -20,6 +20,7 @@ const screenHeight = 450;
 // TODO: ressource manager
 var compass: rl.Model = undefined;
 
+alloc: std.mem.Allocator,
 camera: rl.Camera,
 cam_rot: rl.Vector2,
 cam_rel_pos: rl.Vector3,
@@ -33,7 +34,7 @@ freecam: bool = false,
 wiremesh: bool = false,
 game: ?*engine.Game = null,
 ressource_manager: RessourceManager,
-chunk_mat: *const rl.Material,
+chunk_mat: *rl.Material,
 
 pub fn init(alloc: std.mem.Allocator) !GameWindow {
     rl.setConfigFlags(.{ .window_resizable = true, .window_highdpi = true });
@@ -51,7 +52,14 @@ pub fn init(alloc: std.mem.Allocator) !GameWindow {
     errdefer res_mana.unloadAll();
     try res_mana.loadAll();
 
+    const mat = try alloc.create(rl.Material);
+    errdefer alloc.destroy(mat);
+    mat.* = try rl.loadMaterialDefault();
+    errdefer mat.unload();
+    mat.maps[0].texture = res_mana.textures.get("terrain.png").?.*;
+
     return .{
+        .alloc = alloc,
         .camera = rl.Camera{
             .position = .init(0, 120, 0),
             .target = .init(10, 120, 0),
@@ -63,7 +71,7 @@ pub fn init(alloc: std.mem.Allocator) !GameWindow {
         .cam_rot = .zero(),
         .cam_rel_pos = .zero(),
         .ressource_manager = res_mana,
-        .chunk_mat = res_mana.materials.get("chunk").?,
+        .chunk_mat = mat,
     };
 }
 
@@ -97,6 +105,12 @@ pub fn update(self: *GameWindow, delta: f32) !void {
 
     if (rl.isKeyPressed(.tab) and self.focused) {
         self.freecam = !self.freecam;
+    }
+
+    if (rl.isKeyPressed(.f2) and self.focused) {
+        self.chunk_mat.shader.unload();
+        self.chunk_mat.shader = try rl.loadShader("res/shaders/chunk.vs", "res/shaders/chunk.fs");
+        std.debug.print("Reloaded shader\n", .{});
     }
 
     if (self.focused) {
@@ -276,4 +290,5 @@ pub fn deinit(self: *GameWindow) void {
     rl.closeWindow();
     self.ressource_manager.unloadAll();
     self.ressource_manager.deinit();
+    self.alloc.destroy(self.chunk_mat);
 }

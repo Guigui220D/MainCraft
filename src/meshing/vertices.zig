@@ -9,6 +9,7 @@ const VertexIdT = io.properties.VertexIdT;
 
 const uv = @import("uv.zig");
 const Context = @import("terrain").Context;
+const Face = @import("meshing.zig").Face;
 
 const BlockModel = @import("blocks").BlockModel;
 
@@ -82,6 +83,45 @@ pub fn materializeFaces(arraylist: *std.ArrayList(VertexIdT), face_count: Vertex
             });
             id_off += 4;
         }
+    }
+}
+
+/// Write face normals
+/// What is written isn't actually normals but just the coordinates of the block whose light levels should be read
+pub fn writeNormals(arraylist: *std.ArrayList(f32), vertices: []const f32, full_block: bool, pos: coord.Block) void {
+    const zone = tracy.Zone.begin(.{
+        .name = "Write normals",
+        .src = @src(),
+        .color = .dark_green,
+    });
+    defer zone.end();
+
+    // Expect enough vertices for full 4 vertex faces
+    std.debug.assert(vertices.len % (3 * 4) == 0);
+    const faces: []const Face = @ptrCast(@alignCast(vertices));
+
+    for (faces) |face| {
+        // Get local light if we are not a full block
+        const dir: coord.Direction = if (!full_block) .self else blk: {
+            // Determine face orientation
+            const vb = face.b.sub(face.a);
+            const vc = face.c.sub(face.a);
+            const cross = vc.cross(vb).normalize();
+            break :blk cross.generalDirection();
+        };
+
+        // Block whose light level will be used (and whose position we are using)
+        const block_pos = dir.asRelativeBlock();
+        const normal = block_pos.toVec3(f32);
+        _ = pos;
+
+        // Add to arraay
+        arraylist.appendSliceAssumeCapacity(&.{
+            normal.x, normal.y, normal.z,
+            normal.x, normal.y, normal.z,
+            normal.x, normal.y, normal.z,
+            normal.x, normal.y, normal.z,
+        });
     }
 }
 

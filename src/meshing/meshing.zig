@@ -21,5 +21,3 @@ pub const Color = packed struct(u32) {
     b: u8,
     a: u8,
 };
-
-pub const FaceColors = [4]Color;

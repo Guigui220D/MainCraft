@@ -287,13 +287,13 @@ pub fn getContext(self: Chunk, pos: coord.Block) Context {
 
     return .{
         .light_levels = .{
-            .self = self.getLight(pos),
-            .north = self.getLightTranscend(pos.neighbor(.north)),
-            .east = self.getLightTranscend(pos.neighbor(.east)),
-            .south = self.getLightTranscend(pos.neighbor(.south)),
-            .west = self.getLightTranscend(pos.neighbor(.west)),
-            .up = self.getLight(pos.neighbor(.up)),
-            .down = self.getLight(pos.neighbor(.down)),
+            .self = .{ .blocklight = 0, .skylight = 0 },
+            .north = .{ .blocklight = 0, .skylight = 0 },
+            .east = .{ .blocklight = 0, .skylight = 0 },
+            .south = .{ .blocklight = 0, .skylight = 0 },
+            .west = .{ .blocklight = 0, .skylight = 0 },
+            .up = .{ .blocklight = 0, .skylight = 0 },
+            .down = .{ .blocklight = 0, .skylight = 0 },
         },
         .occlusion = .{
             .north = block_n.isFull() and !block_n.flags.transparent,

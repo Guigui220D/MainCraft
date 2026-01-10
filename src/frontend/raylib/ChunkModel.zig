@@ -128,14 +128,11 @@ fn generateMeshesForChunk(alloc: std.mem.Allocator, chunk: Chunk) !struct { []rl
             // Add triangles
             meshing.vertices.materializeFaces(&mesh_builder.indices, face_count, mesh_builder.next_id, false);
 
+            // Add normals
+            meshing.vertices.writeNormals(&mesh_builder.normals, mesh_builder.vertices.items[(mesh_builder.vertices.items.len - (vertex_count * 3))..], block.isFull(), xyz);
+
             // Colors (later based on chunk lighting)
             meshing.colors.writeColors(&mesh_builder.colors, context.occlusion, vertex_count, block_id);
-            meshing.colors.adjustColors(
-                @ptrCast(mesh_builder.colors.items[(mesh_builder.colors.items.len - vertex_count)..]),
-                mesh_builder.vertices.items[(mesh_builder.vertices.items.len - (vertex_count * 3))..],
-                context,
-                block.isFull(),
-            );
 
             // Add UV
             meshing.uv.writeUV(&mesh_builder.texcoords, context.occlusion, block_id);
@@ -157,6 +154,7 @@ const MeshBuilder = struct {
     built_meshes: std.ArrayList(rl.Mesh),
     vertices: std.ArrayList(f32),
     indices: std.ArrayList(properties.VertexIdT),
+    normals: std.ArrayList(f32),
     colors: std.ArrayList(u32),
     texcoords: std.ArrayList(f32),
     next_id: c_ushort,
@@ -168,12 +166,14 @@ const MeshBuilder = struct {
         ret.alloc = alloc;
 
         // Prealloc pessemistically
-        // TODO: try without prealloc to compare
         ret.vertices = try .initCapacity(rl.mem, (std.math.maxInt(c_ushort) * 3 + 1));
         errdefer ret.vertices.deinit(rl.mem);
 
         ret.indices = try .initCapacity(rl.mem, (std.math.maxInt(c_ushort) + 1));
         errdefer ret.indices.deinit(rl.mem);
+
+        ret.normals = try .initCapacity(rl.mem, (std.math.maxInt(c_ushort) * 3 + 1));
+        errdefer ret.normals.deinit(rl.mem);
 
         ret.colors = try .initCapacity(rl.mem, (std.math.maxInt(c_ushort) * 4 + 1));
         errdefer ret.colors.deinit(rl.mem);
@@ -212,6 +212,9 @@ const MeshBuilder = struct {
             const indices_data = try self.indices.toOwnedSlice(rl.mem);
             errdefer rl.mem.free(indices_data);
 
+            const normals_data = try self.normals.toOwnedSlice(rl.mem);
+            errdefer rl.mem.free(normals_data);
+
             const colors_data = try self.colors.toOwnedSlice(rl.mem);
             errdefer rl.mem.free(colors_data);
 
@@ -227,7 +230,7 @@ const MeshBuilder = struct {
                 .boneWeights = @ptrFromInt(0),
                 .colors = @ptrCast(colors_data),
                 .indices = @ptrCast(indices_data),
-                .normals = @ptrFromInt(0),
+                .normals = @ptrCast(normals_data),
                 .tangents = @ptrFromInt(0),
                 .texcoords = @ptrCast(texcoords_data),
                 .texcoords2 = @ptrFromInt(0),
@@ -243,6 +246,7 @@ const MeshBuilder = struct {
         // Reset the slices
         self.vertices = .{};
         self.indices = .{};
+        self.normals = .{};
         self.colors = .{};
         self.texcoords = .{};
         self.next_id = 0;
@@ -263,6 +267,7 @@ const MeshBuilder = struct {
         self.built_meshes.deinit(self.alloc);
         self.vertices.deinit(self.alloc);
         self.indices.deinit(self.alloc);
+        self.normals.deinit(self.alloc);
         self.colors.deinit(self.alloc);
         self.texcoords.deinit(self.alloc);
     }

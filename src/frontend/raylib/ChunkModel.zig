@@ -10,6 +10,7 @@ const Context = terrain.Context;
 const blocks = @import("blocks");
 const tracy = @import("tracy");
 const meshing = @import("meshing");
+const properties = @import("properties.zig");
 
 const ChunkModel = @This();
 
@@ -58,113 +59,31 @@ pub fn drawTransparentLayer(self: ChunkModel, pos: coord.Chunk, material: *const
         rl.drawMesh(mesh, material.*, transform);
 }
 
-pub fn deinit(self: ChunkModel, alloc: std.mem.Allocator) void {
-    for (self.meshes) |mesh|
-        mesh.unload();
-    for (self.transparent_meshes) |mesh|
-        mesh.unload();
-    alloc.free(self.meshes);
-    alloc.free(self.transparent_meshes);
-}
-
 /// Renders a chunk into a mesh
 fn generateMeshesForChunk(alloc: std.mem.Allocator, chunk: Chunk) !struct { []rl.Mesh, []rl.Mesh } {
-    // Meshes arraylist
-    var meshes: std.ArrayList(rl.Mesh) = .{};
-    var transparent_meshes: std.ArrayList(rl.Mesh) = .{};
-    errdefer {
-        for (meshes.items) |mesh|
-            mesh.unload();
-        meshes.deinit(alloc);
+    var meshes = try MeshBuilder.init(alloc);
+    errdefer meshes.deinit();
 
-        for (transparent_meshes.items) |mesh|
-            mesh.unload();
-        transparent_meshes.deinit(alloc);
-    }
+    var meshes_t = try MeshBuilder.init(alloc);
+    errdefer meshes_t.deinit();
 
-    // Remaining data
-    var offset: usize = 0; // advanced by generateSingleMesh
-
-    // SOLID MESHES
-
-    // Generate meshes as long as needed
-    while (offset < Chunk.block_data_len) {
-        const mesh = try generateSingleMesh(alloc, chunk, &offset, false) orelse continue;
-        errdefer mesh.unload();
-
-        try meshes.append(alloc, mesh);
-    }
-
-    offset = 0;
-
-    // TRANSPARENT MESHES
-
-    // Generate meshes as long as needed
-    while (offset < Chunk.block_data_len) {
-        const mesh = try generateSingleMesh(alloc, chunk, &offset, true) orelse continue;
-        errdefer mesh.unload();
-
-        try transparent_meshes.append(alloc, mesh);
-    }
-
-    // Owned arrays
-    const owned_meshes = try meshes.toOwnedSlice(alloc);
-    errdefer alloc.free(owned_meshes);
-
-    const owned_transparent_meshes = try transparent_meshes.toOwnedSlice(alloc);
-    errdefer alloc.free(owned_transparent_meshes);
-
-    return .{
-        owned_meshes,
-        owned_transparent_meshes,
-    };
-}
-
-// TODO: two passes aren't necessary, can collect both meshes in one go
-fn generateSingleMesh(alloc: std.mem.Allocator, chunk: Chunk, offset: *usize, transparent: bool) !?rl.Mesh {
-    const zone = tracy.Zone.begin(.{
-        .name = "Chunk meshing (rl)",
-        .src = @src(),
-        .color = .orange,
-    });
-    defer zone.end();
-
-    // Slice of the remaining data
-    const begin = offset.*;
-    const remaining = chunk.blocks_data[begin..];
-
-    // Dynamic arraylists used to alloc necessary memory for model data
-    var vertices: std.ArrayList(f32) = try .initCapacity(rl.mem, (std.math.maxInt(c_ushort) * 3 + 1));
-    defer vertices.deinit(rl.mem);
-    // TODO: prealloc in a pessimistic way to avoid reallocations
-    var indices: std.ArrayList(c_ushort) = .{};
-    defer indices.deinit(rl.mem);
-
-    var colors: std.ArrayList(u32) = .{};
-    defer colors.deinit(rl.mem);
-
-    var texcoords: std.ArrayList(f32) = .{};
-    defer texcoords.deinit(rl.mem);
-
-    // vertex indices used for the next model added
-    var next_id: c_ushort = 0;
-
-    // Iterate over as many blocks as possible
-    for (remaining, begin..) |block_id, i| {
-        offset.* = i + 1;
-
+    for (chunk.blocks_data, 0..) |block_id, i| {
+        // Ignore air
         if (block_id == 0)
             continue;
 
         const block = blocks.table[block_id];
-        if (block.flags.transparent != transparent)
-            continue;
+
+        // Select mesh builder based on transparency
+        const mesh_builder = if (block.flags.transparent) &meshes_t else &meshes;
 
         // Block coordinates
         const xyz = Chunk.coordFromIndex(i);
 
+        // Get general block information
         const context: Context = chunk.getContext(xyz);
         const face_count: c_ushort = @intCast(meshing.vertices.faceCount(block.flags.model, context.occlusion));
+        // Ignore blocks that are fully occulted
         if (face_count == 0)
             continue;
 
@@ -174,8 +93,10 @@ fn generateSingleMesh(alloc: std.mem.Allocator, chunk: Chunk, offset: *usize, tr
         const vertex_count: c_ushort = face_count * 4;
 
         // Stop filling buffers: we can't use more vertex indices
-        if (next_id > std.math.maxInt(c_ushort) - vertex_count)
-            break;
+        if (mesh_builder.next_id > std.math.maxInt(c_ushort) - vertex_count) {
+            // Flush current mesh builder and
+            try mesh_builder.flush();
+        }
 
         // Resize buffers to fit if needed
         {
@@ -186,10 +107,10 @@ fn generateSingleMesh(alloc: std.mem.Allocator, chunk: Chunk, offset: *usize, tr
             });
             defer realloc_zone.end();
 
-            try vertices.ensureUnusedCapacity(rl.mem, vertex_count);
-            try indices.ensureUnusedCapacity(rl.mem, face_count * 6);
-            try colors.ensureUnusedCapacity(rl.mem, vertex_count);
-            try texcoords.ensureUnusedCapacity(rl.mem, vertex_count * 2);
+            try mesh_builder.vertices.ensureUnusedCapacity(rl.mem, vertex_count * 3);
+            try mesh_builder.indices.ensureUnusedCapacity(rl.mem, face_count * 6);
+            try mesh_builder.colors.ensureUnusedCapacity(rl.mem, vertex_count);
+            try mesh_builder.texcoords.ensureUnusedCapacity(rl.mem, vertex_count * 2);
         }
 
         // Write mesh data for block
@@ -202,67 +123,156 @@ fn generateSingleMesh(alloc: std.mem.Allocator, chunk: Chunk, offset: *usize, tr
             defer write_zone.end();
 
             // Add vertices
-            meshing.vertices.writeVertices(&vertices, block.flags.model, xyz, context.occlusion);
+            meshing.vertices.writeVertices(&mesh_builder.vertices, block.flags.model, xyz, context.occlusion);
 
             // Add triangles
-            meshing.vertices.materializeFaces(&indices, face_count, next_id, false);
+            meshing.vertices.materializeFaces(&mesh_builder.indices, face_count, mesh_builder.next_id, false);
 
             // Colors (later based on chunk lighting)
-            meshing.colors.writeColors(&colors, context.occlusion, vertex_count, block_id);
+            meshing.colors.writeColors(&mesh_builder.colors, context.occlusion, vertex_count, block_id);
             meshing.colors.adjustColors(
-                @ptrCast(colors.items[(colors.items.len - vertex_count)..]),
-                vertices.items[(vertices.items.len - (vertex_count * 3))..],
+                @ptrCast(mesh_builder.colors.items[(mesh_builder.colors.items.len - vertex_count)..]),
+                mesh_builder.vertices.items[(mesh_builder.vertices.items.len - (vertex_count * 3))..],
                 context,
                 block.isFull(),
             );
 
             // Add UV
-            meshing.uv.writeUV(&texcoords, context.occlusion, block_id);
+            meshing.uv.writeUV(&mesh_builder.texcoords, context.occlusion, block_id);
         }
 
         // Count up the vertex indices
-        next_id += vertex_count;
+        mesh_builder.next_id += vertex_count;
     }
 
-    // Count used tris and verts
-    const tri_count = indices.items.len / 3;
-    const vert_count = vertices.items.len / 3;
-
-    // We don't want to generate an empty mesh
-    if (vert_count == 0)
-        return null;
-
-    // Own the slices
-    const colors_data = try colors.toOwnedSlice(rl.mem);
-    errdefer alloc.free(colors_data);
-
-    const indices_data = try indices.toOwnedSlice(rl.mem);
-    errdefer alloc.free(indices_data);
-
-    const texcoords_data = try texcoords.toOwnedSlice(rl.mem);
-    errdefer alloc.free(texcoords_data);
-
-    const vertices_data = try vertices.toOwnedSlice(rl.mem);
-    errdefer alloc.free(vertices_data);
-
-    // Make up the mesh struct
-    return rl.Mesh{
-        .animNormals = @ptrFromInt(0),
-        .animVertices = @ptrFromInt(0),
-        .boneCount = 0,
-        .boneIds = @ptrFromInt(0),
-        .boneMatrices = @ptrFromInt(0),
-        .boneWeights = @ptrFromInt(0),
-        .colors = @ptrCast(colors_data),
-        .indices = @ptrCast(indices_data),
-        .normals = @ptrFromInt(0),
-        .tangents = @ptrFromInt(0),
-        .texcoords = @ptrCast(texcoords_data),
-        .texcoords2 = @ptrFromInt(0),
-        .triangleCount = @intCast(tri_count),
-        .vaoId = 0,
-        .vboId = @ptrFromInt(0),
-        .vertexCount = @intCast(vert_count),
-        .vertices = @ptrCast(vertices_data),
+    return .{
+        try meshes.getMeshesAndDeinit(),
+        try meshes_t.getMeshesAndDeinit(),
     };
+}
+
+/// Struct holding arraylists for a mesh that is being built
+const MeshBuilder = struct {
+    alloc: std.mem.Allocator,
+    built_meshes: std.ArrayList(rl.Mesh),
+    vertices: std.ArrayList(f32),
+    indices: std.ArrayList(properties.VertexIdT),
+    colors: std.ArrayList(u32),
+    texcoords: std.ArrayList(f32),
+    next_id: c_ushort,
+
+    /// Inits a mesh builder and preallocates buffers in pessimistic way
+    pub fn init(alloc: std.mem.Allocator) !MeshBuilder {
+        var ret: MeshBuilder = undefined;
+
+        ret.alloc = alloc;
+
+        // Prealloc pessemistically
+        // TODO: try without prealloc to compare
+        ret.vertices = try .initCapacity(rl.mem, (std.math.maxInt(c_ushort) * 3 + 1));
+        errdefer ret.vertices.deinit(rl.mem);
+
+        ret.indices = try .initCapacity(rl.mem, (std.math.maxInt(c_ushort) + 1));
+        errdefer ret.indices.deinit(rl.mem);
+
+        ret.colors = try .initCapacity(rl.mem, (std.math.maxInt(c_ushort) * 4 + 1));
+        errdefer ret.colors.deinit(rl.mem);
+
+        ret.texcoords = try .initCapacity(rl.mem, (std.math.maxInt(c_ushort) * 2 + 1));
+        errdefer ret.texcoords.deinit(rl.mem);
+
+        ret.built_meshes = try .initCapacity(alloc, 2);
+        errdefer ret.built_meshes.deinit(alloc);
+
+        ret.next_id = 0;
+
+        return ret;
+    }
+
+    /// Adds a new mesh by owning the buffers
+    /// Doesn't add anything if the buffers have no meaningful data
+    /// Buffers are then ready for a new mesh
+    pub fn flush(self: *MeshBuilder) !void {
+        // TODO: this is a bit flimsy when it comes to errdefers
+        // Count used tris and verts
+        const tri_count = self.indices.items.len / 3;
+        const vert_count = self.vertices.items.len / 3;
+
+        // We don't want to generate an empty mesh
+        if (vert_count == 0) {
+            return;
+        }
+
+        // Make up the mesh struct
+        const new_mesh = blk: {
+            // Own the slices
+            const vertices_data = try self.vertices.toOwnedSlice(rl.mem);
+            errdefer rl.mem.free(vertices_data);
+
+            const indices_data = try self.indices.toOwnedSlice(rl.mem);
+            errdefer rl.mem.free(indices_data);
+
+            const colors_data = try self.colors.toOwnedSlice(rl.mem);
+            errdefer rl.mem.free(colors_data);
+
+            const texcoords_data = try self.texcoords.toOwnedSlice(rl.mem);
+            errdefer rl.mem.free(texcoords_data);
+
+            break :blk rl.Mesh{
+                .animNormals = @ptrFromInt(0),
+                .animVertices = @ptrFromInt(0),
+                .boneCount = 0,
+                .boneIds = @ptrFromInt(0),
+                .boneMatrices = @ptrFromInt(0),
+                .boneWeights = @ptrFromInt(0),
+                .colors = @ptrCast(colors_data),
+                .indices = @ptrCast(indices_data),
+                .normals = @ptrFromInt(0),
+                .tangents = @ptrFromInt(0),
+                .texcoords = @ptrCast(texcoords_data),
+                .texcoords2 = @ptrFromInt(0),
+                .triangleCount = @intCast(tri_count),
+                .vaoId = 0,
+                .vboId = @ptrFromInt(0),
+                .vertexCount = @intCast(vert_count),
+                .vertices = @ptrCast(vertices_data),
+            };
+        };
+        errdefer new_mesh.unload();
+
+        // Reset the slices
+        self.vertices = .{};
+        self.indices = .{};
+        self.colors = .{};
+        self.texcoords = .{};
+        self.next_id = 0;
+
+        // Add the new mesh
+        try self.built_meshes.append(self.alloc, new_mesh);
+    }
+
+    /// Gets the meshes and deinits the mesh builder
+    /// No need to call deinit after
+    pub fn getMeshesAndDeinit(self: *MeshBuilder) ![]rl.Mesh {
+        try self.flush();
+        return self.built_meshes.toOwnedSlice(self.alloc);
+    }
+
+    /// Not needed after getMeshesAndDeinit
+    pub fn deinit(self: *MeshBuilder) void {
+        self.built_meshes.deinit(self.alloc);
+        self.vertices.deinit(self.alloc);
+        self.indices.deinit(self.alloc);
+        self.colors.deinit(self.alloc);
+        self.texcoords.deinit(self.alloc);
+    }
+};
+
+pub fn deinit(self: ChunkModel, alloc: std.mem.Allocator) void {
+    for (self.meshes) |mesh|
+        mesh.unload();
+    for (self.transparent_meshes) |mesh|
+        mesh.unload();
+    alloc.free(self.meshes);
+    alloc.free(self.transparent_meshes);
 }

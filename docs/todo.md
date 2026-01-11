@@ -10,7 +10,7 @@
 - [ ] Inventories and items engine support
 - [ ] Inventories and items rendering API in I/O
 - [ ] Menus
-- [ ] Setting blocks
+- [ ] Placing blocks
 - [ ] Weather, time
 - [ ] Clearly define I/O role and API
 - [ ] Polish player controls 

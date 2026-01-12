@@ -72,7 +72,7 @@ pub fn doChunkMap(self: *World, x: i32, y: i16, z: i32, size_x: u8, size_y: u8, 
             const coords = coord.Chunk{ .x = chunk_x, .z = chunk_z };
 
             // Apply modifications to selected chunk
-            const chunk = self.getChunk(coords) orelse return error.ChunkNotLoaded;
+            const chunk = self.getChunk(coords) orelse continue; //return error.ChunkNotLoaded; // TODO: what to do? this happened once
             remaining = chunk.setChunkData(remaining, x1, y1, z1, x2, y2, z2);
 
             // Update own model

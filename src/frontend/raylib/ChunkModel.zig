@@ -18,6 +18,8 @@ const ChunkModel = @This();
 
 meshes: []rl.Mesh,
 transparent_meshes: []rl.Mesh,
+bl_tex: rl.Texture,
+sl_tex: rl.Texture,
 
 /// Prepare the ChunkModel for a chunk (part of the API)
 pub fn generateForChunk(alloc: std.mem.Allocator, chunk: Chunk) !ChunkModel {
@@ -39,20 +41,39 @@ pub fn generateForChunk(alloc: std.mem.Allocator, chunk: Chunk) !ChunkModel {
     for (transparent_meshes) |*mesh|
         rl.uploadMesh(mesh, false);
 
+    // Generate light textures (prototype)
+    const bl_tex = try generateLightTexture(chunk.blocklight);
+    errdefer bl_tex.unload();
+
+    const sl_tex = try generateLightTexture(chunk.skylight);
+    errdefer sl_tex.unload();
+
     return .{
         .meshes = meshes,
         .transparent_meshes = transparent_meshes,
+        .bl_tex = bl_tex,
+        .sl_tex = sl_tex,
     };
 }
 
-pub fn draw(self: ChunkModel, pos: coord.Chunk, material: *const rl.Material) void {
+pub fn draw(self: ChunkModel, pos: coord.Chunk, material: *const rl.Material, bl_loc: ?i32, sl_loc: ?i32) void {
+    // TODO: done elsewhere later
+    if (bl_loc) |loc|
+        rl.setShaderValueTexture(material.shader, loc, self.bl_tex);
+    if (sl_loc) |loc|
+        rl.setShaderValueTexture(material.shader, loc, self.sl_tex);
     // Draw chunk
     const transform: rl.Matrix = .translate(@as(f32, @floatFromInt(pos.x * 16)), 0, @as(f32, @floatFromInt(pos.z * 16)));
     for (self.meshes) |mesh|
         rl.drawMesh(mesh, material.*, transform);
 }
 
-pub fn drawTransparentLayer(self: ChunkModel, pos: coord.Chunk, material: *const rl.Material) void {
+pub fn drawTransparentLayer(self: ChunkModel, pos: coord.Chunk, material: *const rl.Material, bl_loc: ?i32, sl_loc: ?i32) void {
+    // TODO: done elsewhere later
+    if (bl_loc) |loc|
+        rl.setShaderValueTexture(material.shader, loc, self.bl_tex);
+    if (sl_loc) |loc|
+        rl.setShaderValueTexture(material.shader, loc, self.sl_tex);
     // Draw chunk
     const transform: rl.Matrix = .translate(@as(f32, @floatFromInt(pos.x * 16)), 0, @as(f32, @floatFromInt(pos.z * 16)));
     for (self.transparent_meshes) |mesh|
@@ -146,6 +167,30 @@ fn generateMeshesForChunk(alloc: std.mem.Allocator, chunk: Chunk) !struct { []rl
         try meshes.getMeshesAndDeinit(),
         try meshes_t.getMeshesAndDeinit(),
     };
+}
+
+/// Gets a 1D texture from the light data, to send as uniform
+fn generateLightTexture(lightdata: []const u8) !rl.Texture {
+    std.debug.assert(lightdata.len == 16384);
+
+    var image = rl.Image{
+        .data = @ptrCast(try rl.mem.dupe(u8, lightdata)),
+        .format = .uncompressed_r32,
+        .width = 4096,
+        .height = 1,
+        .mipmaps = 1,
+    };
+    defer image.unload();
+
+    const ptr = @as([*]u8, @ptrCast(image.data));
+    const data = ptr[0..16384];
+
+    @memcpy(data, lightdata);
+    //for (data) |*val| {
+    //    val.* = 0xF0;
+    //}
+
+    return try image.toTexture();
 }
 
 /// Struct holding arraylists for a mesh that is being built
@@ -280,4 +325,6 @@ pub fn deinit(self: ChunkModel, alloc: std.mem.Allocator) void {
         mesh.unload();
     alloc.free(self.meshes);
     alloc.free(self.transparent_meshes);
+    self.bl_tex.unload();
+    self.sl_tex.unload();
 }

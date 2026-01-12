@@ -111,9 +111,8 @@ pub fn writeNormals(arraylist: *std.ArrayList(f32), vertices: []const f32, full_
         };
 
         // Block whose light level will be used (and whose position we are using)
-        const block_pos = dir.asRelativeBlock();
+        const block_pos = dir.asRelativeBlock().add(pos);
         const normal = block_pos.toVec3(f32);
-        _ = pos;
 
         // Add to arraay
         arraylist.appendSliceAssumeCapacity(&.{

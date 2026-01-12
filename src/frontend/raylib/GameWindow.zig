@@ -35,6 +35,8 @@ wiremesh: bool = false,
 game: ?*engine.Game = null,
 ressource_manager: RessourceManager,
 chunk_mat: *rl.Material,
+chunk_bl_index: ?i32,
+chunk_sl_index: ?i32,
 
 pub fn init(alloc: std.mem.Allocator) !GameWindow {
     rl.setConfigFlags(.{ .window_resizable = true, .window_highdpi = true });
@@ -72,6 +74,8 @@ pub fn init(alloc: std.mem.Allocator) !GameWindow {
         .cam_rel_pos = .zero(),
         .ressource_manager = res_mana,
         .chunk_mat = mat,
+        .chunk_sl_index = null,
+        .chunk_bl_index = null,
     };
 }
 
@@ -108,9 +112,18 @@ pub fn update(self: *GameWindow, delta: f32) !void {
     }
 
     if (rl.isKeyPressed(.f2) and self.focused) {
-        self.chunk_mat.shader.unload();
-        self.chunk_mat.shader = try rl.loadShader("res/shaders/chunk.vs", "res/shaders/chunk.fs");
-        std.debug.print("Reloaded shader\n", .{});
+        if (rl.loadShader("res/shaders/chunk.vs", "res/shaders/chunk.fs") catch null) |new_shader| {
+            self.chunk_mat.shader.unload();
+            self.chunk_mat.shader = new_shader;
+            std.debug.print("Reloaded shader\n", .{});
+            self.chunk_bl_index = rl.getShaderLocation(new_shader, "blocklight");
+            self.chunk_sl_index = rl.getShaderLocation(new_shader, "skylight");
+            std.debug.print("bl loc {?} sl loc {?}\n", .{ self.chunk_bl_index, self.chunk_sl_index });
+        } else {
+            std.debug.print("Failed to reload shader\n", .{});
+            self.chunk_bl_index = null;
+            self.chunk_sl_index = null;
+        }
     }
 
     if (self.focused) {
@@ -212,6 +225,8 @@ pub fn drawWorld(self: GameWindow) void {
     if (self.wiremesh)
         rl.gl.rlEnableWireMode();
 
+    //rl.setShaderValueTexture(self.chunk_mat.shader, locIndex: i32, texture: Texture)
+
     var chunk_it = game.world.chunk_list.iterator();
     while (chunk_it.next()) |entry| {
         const chunk = entry.value_ptr.*;
@@ -223,7 +238,7 @@ pub fn drawWorld(self: GameWindow) void {
         }
         // Draw the solid part of the chunk
         if (chunk.model) |model| {
-            model.draw(entry.key_ptr.*, self.chunk_mat);
+            model.draw(entry.key_ptr.*, self.chunk_mat, self.chunk_bl_index, self.chunk_sl_index);
         }
     }
 
@@ -231,7 +246,7 @@ pub fn drawWorld(self: GameWindow) void {
     chunk_it = game.world.chunk_list.iterator();
     while (chunk_it.next()) |entry| {
         if (entry.value_ptr.*.model) |model| {
-            model.drawTransparentLayer(entry.key_ptr.*, self.chunk_mat);
+            model.drawTransparentLayer(entry.key_ptr.*, self.chunk_mat, self.chunk_bl_index, self.chunk_sl_index);
         }
     }
 

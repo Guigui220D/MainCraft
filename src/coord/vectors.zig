@@ -72,9 +72,9 @@ pub const Block = struct {
     /// Get the block pos as a float vector
     pub inline fn toVec3(self: Block, comptime Float: type) Vec3(Float) {
         return .{
-            .x = @as(Float, @floatFromInt(self.x)), // + 0.5,
-            .y = @as(Float, @floatFromInt(self.y)), // + 0.5,
-            .z = @as(Float, @floatFromInt(self.z)), // + 0.5,
+            .x = @as(Float, @floatFromInt(self.x)) + 0.5,
+            .y = @as(Float, @floatFromInt(self.y)) + 0.5,
+            .z = @as(Float, @floatFromInt(self.z)) + 0.5,
         };
     }
 };

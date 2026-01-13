@@ -56,6 +56,30 @@ pub fn getSlabUV(texture_id: u8, comptime reversed: bool) [8]f32 {
     }
 }
 
+/// Gets the snow layer texture coordinates for an ID of the terrain.png atlas
+pub fn getSnowUV(texture_id: u8, comptime reversed: bool) [8]f32 {
+    const tx: f32 = @as(f32, @floatFromInt(texture_id % atlas_size));
+    const ty: f32 = @as(f32, @floatFromInt(texture_id / atlas_size));
+    const divide: f32 = if (io.properties.normalized_uvs) atlas_size else 1;
+    const height = 2.0 / 16.0;
+
+    if (reversed) {
+        return [8]f32{
+            (0.0 + tx) / divide, (height + ty) / divide,
+            (1.0 + tx) / divide, (height + ty) / divide,
+            (1.0 + tx) / divide, (0.0 + ty) / divide,
+            (0.0 + tx) / divide, (0.0 + ty) / divide,
+        };
+    } else {
+        return [8]f32{
+            (1.0 + tx) / divide, (height + ty) / divide,
+            (0.0 + tx) / divide, (height + ty) / divide,
+            (0.0 + tx) / divide, (0.0 + ty) / divide,
+            (1.0 + tx) / divide, (0.0 + ty) / divide,
+        };
+    }
+}
+
 /// Write the right UV depending on the context and block id
 /// Assumes there is enough space left in the arraylist ((6 or 3) * face_count) depending of if using 2 tris or 1 quad per face
 pub fn writeUV(arraylist: *std.ArrayList(f32), context: Context.Occlusion, block_id: u8) void {
@@ -75,6 +99,7 @@ pub fn writeUV(arraylist: *std.ArrayList(f32), context: Context.Occlusion, block
         .plant => writeNFacesUV(4, arraylist, block.tex_id),
         .cactus => writeBarrelUV(arraylist, context, block.tex_id, block.top_tex_id, block.bottom_tex_id),
         .liquid_still => writeNFacesUV(1, arraylist, block.tex_id),
+        .snow_layer => writeSnowUV(arraylist, context, block.tex_id),
     }
 }
 
@@ -161,6 +186,26 @@ fn writeSlabUV(arraylist: *std.ArrayList(f32), context: Context.Occlusion, side_
     arraylist.appendSliceAssumeCapacity(&top_tex_coords);
     if (!context.down) {
         const bottom_tex_coords = getTerrainUV(bottom_tex_id, true);
+        arraylist.appendSliceAssumeCapacity(&bottom_tex_coords);
+    }
+}
+
+/// Write uv for a snow layer
+fn writeSnowUV(arraylist: *std.ArrayList(f32), context: Context.Occlusion, tex_id: u8) void {
+    const side_tex_coords = getSnowUV(tex_id, false);
+
+    if (!context.north)
+        arraylist.appendSliceAssumeCapacity(&side_tex_coords);
+    if (!context.east)
+        arraylist.appendSliceAssumeCapacity(&side_tex_coords);
+    if (!context.south)
+        arraylist.appendSliceAssumeCapacity(&side_tex_coords);
+    if (!context.west)
+        arraylist.appendSliceAssumeCapacity(&side_tex_coords);
+    const top_tex_coords = getTerrainUV(tex_id, false);
+    arraylist.appendSliceAssumeCapacity(&top_tex_coords);
+    if (!context.down) {
+        const bottom_tex_coords = getTerrainUV(tex_id, true);
         arraylist.appendSliceAssumeCapacity(&bottom_tex_coords);
     }
 }

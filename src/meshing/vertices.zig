@@ -25,6 +25,7 @@ pub inline fn faceCount(model: BlockModel, context: Context.Occlusion) usize {
         .plant => plant_face_count,
         .cactus => cactusFaceCount(context),
         .liquid_still => liquid_still_face_count,
+        .snow_layer => slabFaceCount(context),
     };
 }
 
@@ -48,6 +49,7 @@ pub inline fn writeVertices(arraylist: *std.ArrayList(f32), model: BlockModel, c
         .plant => writePlantVertices(arraylist, x, y, z),
         .cactus => writeCactusVertices(arraylist, x, y, z, context),
         .liquid_still => writeLiquidStillVertices(arraylist, x, y, z),
+        .snow_layer => writeSnowVertices(arraylist, x, y, z, context),
     }
 }
 
@@ -281,6 +283,57 @@ fn writeLiquidStillVertices(arraylist: *std.ArrayList(f32), x: i32, y: i32, z: i
         x2, y1, z2,
         x1, y1, z2,
     });
+}
+
+fn writeSnowVertices(arraylist: *std.ArrayList(f32), x: i32, y: i32, z: i32, context: Context.Occlusion) void {
+    const x1: f32 = @floatFromInt(x + 0);
+    const x2: f32 = @floatFromInt(x + 1);
+    const y1: f32 = @floatFromInt(y + 0);
+    const y2: f32 = @as(f32, @floatFromInt(y)) + (2.0 / 16.0);
+    const z1: f32 = @floatFromInt(z + 0);
+    const z2: f32 = @floatFromInt(z + 1);
+    if (!context.north)
+        arraylist.appendSliceAssumeCapacity(&.{
+            x1, y1, z1,
+            x2, y1, z1,
+            x2, y2, z1,
+            x1, y2, z1,
+        });
+    if (!context.east)
+        arraylist.appendSliceAssumeCapacity(&.{
+            x2, y1, z1,
+            x2, y1, z2,
+            x2, y2, z2,
+            x2, y2, z1,
+        });
+    if (!context.south)
+        arraylist.appendSliceAssumeCapacity(&.{
+            x2, y1, z2,
+            x1, y1, z2,
+            x1, y2, z2,
+            x2, y2, z2,
+        });
+    if (!context.west)
+        arraylist.appendSliceAssumeCapacity(&.{
+            x1, y1, z2,
+            x1, y1, z1,
+            x1, y2, z1,
+            x1, y2, z2,
+        });
+    // if (!context.up)
+    arraylist.appendSliceAssumeCapacity(&.{
+        x2, y2, z2,
+        x1, y2, z2,
+        x1, y2, z1,
+        x2, y2, z1,
+    });
+    if (!context.down)
+        arraylist.appendSliceAssumeCapacity(&.{
+            x1, y1, z2,
+            x2, y1, z2,
+            x2, y1, z1,
+            x1, y1, z1,
+        });
 }
 
 fn slabFaceCount(context: Context.Occlusion) usize {

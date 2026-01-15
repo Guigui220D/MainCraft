@@ -35,8 +35,6 @@ wiremesh: bool = false,
 game: ?*engine.Game = null,
 ressource_manager: RessourceManager,
 chunk_mat: *rl.Material,
-chunk_bl_index: ?i32,
-chunk_sl_index: ?i32,
 
 pub fn init(alloc: std.mem.Allocator) !GameWindow {
     rl.setConfigFlags(.{ .window_resizable = true, .window_highdpi = true });
@@ -74,8 +72,6 @@ pub fn init(alloc: std.mem.Allocator) !GameWindow {
         .cam_rel_pos = .zero(),
         .ressource_manager = res_mana,
         .chunk_mat = mat,
-        .chunk_sl_index = null,
-        .chunk_bl_index = null,
     };
 }
 
@@ -116,13 +112,10 @@ pub fn update(self: *GameWindow, delta: f32) !void {
             self.chunk_mat.shader.unload();
             self.chunk_mat.shader = new_shader;
             std.debug.print("Reloaded shader\n", .{});
-            self.chunk_bl_index = rl.getShaderLocation(new_shader, "blocklight");
-            self.chunk_sl_index = rl.getShaderLocation(new_shader, "skylight");
-            std.debug.print("bl loc {?} sl loc {?}\n", .{ self.chunk_bl_index, self.chunk_sl_index });
+            self.chunk_mat.shader.locs[1] = rl.getShaderLocation(new_shader, "blocklight");
+            self.chunk_mat.shader.locs[2] = rl.getShaderLocation(new_shader, "skylight");
         } else {
             std.debug.print("Failed to reload shader\n", .{});
-            self.chunk_bl_index = null;
-            self.chunk_sl_index = null;
         }
     }
 
@@ -236,17 +229,9 @@ pub fn drawWorld(self: GameWindow) void {
             rl.drawCubeWires(.{ .x = @floatFromInt(chunk_pos.x * 16 + 8), .y = 64, .z = @floatFromInt(chunk_pos.z * 16 + 8) }, 16, 128, 16, .red);
             rl.drawPlane(.{ .x = @floatFromInt(chunk_pos.x * 16 + 8), .y = 0, .z = @floatFromInt(chunk_pos.z * 16 + 8) }, .{ .x = 16, .y = 16 }, .magenta);
         }
-        // Draw the solid part of the chunk
+        // Draw the chunk
         if (chunk.model) |model| {
-            model.draw(entry.key_ptr.*, self.chunk_mat, self.chunk_bl_index, self.chunk_sl_index);
-        }
-    }
-
-    // Draw the transparent part of chunks
-    chunk_it = game.world.chunk_list.iterator();
-    while (chunk_it.next()) |entry| {
-        if (entry.value_ptr.*.model) |model| {
-            model.drawTransparentLayer(entry.key_ptr.*, self.chunk_mat, self.chunk_bl_index, self.chunk_sl_index);
+            model.draw(entry.key_ptr.*, self.chunk_mat);
         }
     }
 

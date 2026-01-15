@@ -16,29 +16,35 @@ const ChunkModel = @This();
 
 // TODO: make the meshes on a separate thread
 
-meshes: []rl.Mesh,
-transparent_meshes: []rl.Mesh,
+model: rl.Model,
 bl_tex: rl.Texture,
 sl_tex: rl.Texture,
 
 /// Prepare the ChunkModel for a chunk (part of the API)
 pub fn generateForChunk(alloc: std.mem.Allocator, chunk: Chunk) !ChunkModel {
-    const meshes, const transparent_meshes = try generateMeshesForChunk(alloc, chunk);
-    errdefer {
-        for (meshes) |mesh|
-            mesh.unload();
-        alloc.free(meshes);
+    // Get meshes
+    const opaque_meshes, const transparent_meshes = try generateMeshesForChunk(alloc, chunk);
+    defer alloc.free(opaque_meshes);
+    defer alloc.free(transparent_meshes);
 
+    errdefer {
+        for (opaque_meshes) |mesh|
+            mesh.unload();
         for (transparent_meshes) |mesh|
             mesh.unload();
-        alloc.free(transparent_meshes);
     }
 
-    // Upload generated meshes
-    for (meshes) |*mesh|
-        rl.uploadMesh(mesh, false);
+    // Put all meshes in one array (order matters)
+    const total_meshes = opaque_meshes.len + transparent_meshes.len;
+    var all_meshes = try std.ArrayList(rl.Mesh).initCapacity(rl.mem, total_meshes);
+    errdefer all_meshes.deinit(rl.mem);
+    all_meshes.appendSliceAssumeCapacity(opaque_meshes);
+    all_meshes.appendSliceAssumeCapacity(transparent_meshes);
+    const meshes = try all_meshes.toOwnedSlice(rl.mem);
+    errdefer rl.mem.free(meshes);
 
-    for (transparent_meshes) |*mesh|
+    // Upload all meshes
+    for (meshes) |*mesh|
         rl.uploadMesh(mesh, false);
 
     // Generate light textures (prototype)
@@ -48,36 +54,45 @@ pub fn generateForChunk(alloc: std.mem.Allocator, chunk: Chunk) !ChunkModel {
     const sl_tex = try generateLightTexture(chunk.skylight);
     errdefer sl_tex.unload();
 
+    // Mesh materials
+    const mesh_materials = try rl.mem.dupe(c_int, &.{0});
+    errdefer rl.mem.free(mesh_materials);
+
+    const materials = try rl.mem.dupe(rl.Material, &.{undefined});
+    errdefer rl.mem.free(materials);
+
+    const model = rl.Model{
+        .bindPose = @ptrFromInt(0),
+        .boneCount = 0,
+        .bones = @ptrFromInt(0),
+        .materialCount = 1,
+        .materials = @ptrCast(materials),
+        .meshCount = @intCast(total_meshes),
+        .meshes = @ptrCast(meshes),
+        .meshMaterial = @ptrCast(mesh_materials),
+        .transform = .identity(),
+    };
+    errdefer model.unload();
+
     return .{
-        .meshes = meshes,
-        .transparent_meshes = transparent_meshes,
+        .model = model,
         .bl_tex = bl_tex,
         .sl_tex = sl_tex,
     };
 }
 
-pub fn draw(self: ChunkModel, pos: coord.Chunk, material: *const rl.Material, bl_loc: ?i32, sl_loc: ?i32) void {
-    // TODO: done elsewhere later
-    if (bl_loc) |loc|
-        rl.setShaderValueTexture(material.shader, loc, self.bl_tex);
-    if (sl_loc) |loc|
-        rl.setShaderValueTexture(material.shader, loc, self.sl_tex);
-    // Draw chunk
-    const transform: rl.Matrix = .translate(@as(f32, @floatFromInt(pos.x * 16)), 0, @as(f32, @floatFromInt(pos.z * 16)));
-    for (self.meshes) |mesh|
-        rl.drawMesh(mesh, material.*, transform);
-}
+pub fn draw(self: ChunkModel, pos: coord.Chunk, material: *const rl.Material) void {
+    self.model.materials[0] = material.*;
+    self.model.materials[0].maps[1].texture = self.bl_tex;
+    self.model.materials[0].maps[2].texture = self.sl_tex;
 
-pub fn drawTransparentLayer(self: ChunkModel, pos: coord.Chunk, material: *const rl.Material, bl_loc: ?i32, sl_loc: ?i32) void {
-    // TODO: done elsewhere later
-    if (bl_loc) |loc|
-        rl.setShaderValueTexture(material.shader, loc, self.bl_tex);
-    if (sl_loc) |loc|
-        rl.setShaderValueTexture(material.shader, loc, self.sl_tex);
     // Draw chunk
-    const transform: rl.Matrix = .translate(@as(f32, @floatFromInt(pos.x * 16)), 0, @as(f32, @floatFromInt(pos.z * 16)));
-    for (self.transparent_meshes) |mesh|
-        rl.drawMesh(mesh, material.*, transform);
+    rl.drawModel(
+        self.model,
+        .{ .x = @as(f32, @floatFromInt(pos.x * 16)), .y = 0, .z = @as(f32, @floatFromInt(pos.z * 16)) },
+        1.0,
+        .white,
+    );
 }
 
 /// Renders a chunk into a mesh
@@ -318,13 +333,9 @@ const MeshBuilder = struct {
     }
 };
 
-pub fn deinit(self: ChunkModel, alloc: std.mem.Allocator) void {
-    for (self.meshes) |mesh|
-        mesh.unload();
-    for (self.transparent_meshes) |mesh|
-        mesh.unload();
-    alloc.free(self.meshes);
-    alloc.free(self.transparent_meshes);
+pub fn deinit(self: ChunkModel, _: std.mem.Allocator) void {
+    self.model.materials[0] = rl.loadMaterialDefault() catch undefined;
+    self.model.unload();
     self.bl_tex.unload();
     self.sl_tex.unload();
 }

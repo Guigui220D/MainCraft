@@ -72,7 +72,7 @@ pub fn doChunkMap(self: *World, x: i32, y: i16, z: i32, size_x: u8, size_y: u8, 
             const coords = coord.Chunk{ .x = chunk_x, .z = chunk_z };
 
             // Apply modifications to selected chunk
-            const chunk = self.getChunk(coords) orelse return error.ChunkNotLoaded;
+            const chunk = self.getChunk(coords) orelse return; //error.ChunkNotLoaded; // TODO: what to do in that case?
             remaining = chunk.setChunkData(remaining, x1, y1, z1, x2, y2, z2);
 
             // Update own model
@@ -107,7 +107,7 @@ pub fn doChunkMap(self: *World, x: i32, y: i16, z: i32, size_x: u8, size_y: u8, 
 /// Change multiple blocks
 pub fn doMultiBlockChange(self: *World, chunk_pos: coord.Chunk, coord_array: []i16, block_ids: []u8, block_metas: []u8) !void {
     // Apply modifications to selected chunk
-    const chunk = self.getChunk(chunk_pos) orelse return error.ChunkNotLoaded;
+    const chunk = self.getChunk(chunk_pos) orelse return; //error.ChunkNotLoaded; // TODO: what to do in that case?
 
     var north_dirty = false;
     var east_dirty = false;
@@ -162,7 +162,7 @@ pub fn doMultiBlockChange(self: *World, chunk_pos: coord.Chunk, coord_array: []i
 /// Set a block ID at coordinates, fails if the chunk isn't loaded
 pub fn setBlockIdAndMetadata(self: *World, pos: coord.Block, block_id: u8, block_meta: u4) !void {
     const chunk_pos = pos.getChunk();
-    const chunk = self.getChunk(chunk_pos) orelse return error.ChunkNotLoaded;
+    const chunk = self.getChunk(chunk_pos) orelse return; //error.ChunkNotLoaded; // TODO: what to do in that case?
     const pos_in_chunk = pos.getPosInChunk();
 
     std.debug.assert(pos_in_chunk.isWithinChunk());

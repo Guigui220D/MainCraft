@@ -10,6 +10,7 @@ const entities = @import("entities");
 const RessourceManager = @import("RessourceManager.zig");
 const vec = @import("vec.zig");
 const ChunkModel = @import("ChunkModel.zig");
+const blocks = @import("blocks");
 
 const GameWindow = @This();
 
@@ -31,6 +32,8 @@ game: ?*engine.Game = null,
 ressource_manager: RessourceManager,
 chunk_mat: *const rl.Material,
 compass: *const rl.Model,
+selected_block: ?coord.Block = null,
+window_size: rl.Vector2,
 
 pub fn init(alloc: std.mem.Allocator) !GameWindow {
     rl.setConfigFlags(.{ .window_resizable = true, .window_highdpi = true });
@@ -62,6 +65,7 @@ pub fn init(alloc: std.mem.Allocator) !GameWindow {
         .ressource_manager = res_mana,
         .chunk_mat = res_mana.materials.get("chunk").?,
         .compass = res_mana.models.get("compass.glb").?,
+        .window_size = .{ .x = @floatFromInt(rl.getScreenWidth()), .y = @floatFromInt(rl.getScreenHeight()) },
     };
 }
 
@@ -96,6 +100,9 @@ pub fn update(self: *GameWindow, delta: f32) !void {
     if (rl.isKeyPressed(.tab) and self.focused) {
         self.freecam = !self.freecam;
     }
+
+    if (rl.isWindowResized())
+        self.window_size = .{ .x = @floatFromInt(rl.getScreenWidth()), .y = @floatFromInt(rl.getScreenHeight()) };
 
     if (self.focused) {
         if (self.freecam) {
@@ -140,6 +147,18 @@ pub fn update(self: *GameWindow, delta: f32) !void {
             }
             if (rl.isKeyDown(.space))
                 game.player.jump();
+
+            // TODO: move that piece of code to player
+            {
+                var block_it = coord.raycast.sendRay(vec.rlVecToCoord(self.camera.position), vec.rlVecToCoord(self.cam_rel_pos), 4.5);
+                const selected_block = while (block_it.next()) |block_info| {
+                    const block_pos, _ = block_info;
+                    if (game.world.getBlockId(block_pos) != 0)
+                        break block_pos;
+                } else null;
+
+                self.selected_block = selected_block;
+            }
         }
     }
 
@@ -157,7 +176,8 @@ pub fn update(self: *GameWindow, delta: f32) !void {
         const pos_chunk = pos_block.getChunk();
         const pos_in_chunk = pos_block.getPosInChunk();
         const time = game.time.load(.unordered);
-        self.f3_str = try std.fmt.bufPrintZ(&self.f3_buf, "camera: {}\nplayer: {}\nblock: {}\nchunk: {}\nin chunk: {}\nfocused: {}\ntime: {}\n", .{
+        const block_id = if (self.selected_block) |selected| game.world.getBlockId(selected) else 0;
+        self.f3_str = try std.fmt.bufPrintZ(&self.f3_buf, "camera: {}\nplayer: {}\nblock: {}\nchunk: {}\nin chunk: {}\nfocused: {}\ntime: {}\nblock aimed at: {?}\nblock id: {} {s}", .{
             cam_pos,
             pos,
             pos_block,
@@ -165,6 +185,9 @@ pub fn update(self: *GameWindow, delta: f32) !void {
             pos_in_chunk,
             self.focused,
             time,
+            self.selected_block,
+            block_id,
+            blocks.table[block_id].name,
         });
     }
 }
@@ -235,6 +258,10 @@ pub fn drawWorld(self: GameWindow) void {
         );
     }
 
+    // Draw block selector/damage
+    if (self.selected_block) |selected|
+        rl.drawCubeWires(vec.coordToRlVec(selected.toVec3(f64)).add(.{ .x = 0.51, .y = 0.51, .z = 0.51 }), 1.05, 1.05, 1.05, .black);
+
     // Draw entities
     var it = game.entities.entities.iterator();
     while (it.next()) |entry| {
@@ -264,6 +291,8 @@ pub fn drawGui(self: GameWindow) void {
 
     if (self.f3_enabled)
         rl.drawText(self.f3_str, 10, 10, 20, .black);
+
+    rl.drawCircleLinesV(self.window_size.scale(0.5), 5, .black);
 }
 
 pub fn endDraw(_: GameWindow) void {

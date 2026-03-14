@@ -41,6 +41,7 @@ pub const BlockModel = enum(u4) {
     plant,
     cactus,
     liquid_still,
+    snow_layer,
     // and others...
 };
 

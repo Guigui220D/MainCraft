@@ -9,8 +9,10 @@ pub const Chunk = vec.Chunk;
 pub const Vec3f = vec.Vec3f;
 pub const Direction = @import("direction.zig").Direction;
 pub const Vec3fs = vec.Vec3fs;
+pub const raycast = @import("raycast.zig");
 
 test "coord tests" {
-    std.testing.refAllDecls(@import("vectors.zig"));
-    std.testing.refAllDecls(@import("HitboxAABB.zig"));
+    std.testing.refAllDecls(vec);
+    std.testing.refAllDecls(HitboxAABB);
+    std.testing.refAllDecls(raycast);
 }

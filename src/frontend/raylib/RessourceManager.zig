@@ -85,7 +85,7 @@ fn loadTexture(self: *RessourceManager, path: [:0]const u8) !void {
 
     try self.textures.put(name, new_tex);
 
-    std.log.debug("Loaded {s}", .{name});
+    std.log.debug("Loaded texture {s}", .{name});
 }
 
 /// Loads a model using its path
@@ -101,7 +101,7 @@ fn loadModel(self: *RessourceManager, path: [:0]const u8) !void {
 
     try self.models.put(name, new_mod);
 
-    std.log.debug("Loaded {s}", .{name});
+    std.log.debug("Loaded model {s}", .{name});
 }
 
 /// Loads a shader using its path
@@ -115,7 +115,7 @@ fn loadShader(self: *RessourceManager, name: []const u8, path_vs: ?[:0]const u8,
 
     try self.shaders.put(name, new_sh);
 
-    std.log.debug("Loaded {s}", .{name});
+    std.log.debug("Loaded shader {s}", .{name});
 }
 
 /// Makes a material using a texture and a shader

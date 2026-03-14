@@ -16,10 +16,6 @@ const GameWindow = @This();
 const screenWidth = 800;
 const screenHeight = 450;
 
-// Debug compass
-// TODO: ressource manager
-var compass: rl.Model = undefined;
-
 camera: rl.Camera,
 cam_rot: rl.Vector2,
 cam_rel_pos: rl.Vector3,
@@ -34,6 +30,7 @@ wiremesh: bool = false,
 game: ?*engine.Game = null,
 ressource_manager: RessourceManager,
 chunk_mat: *const rl.Material,
+compass: *const rl.Model,
 
 pub fn init(alloc: std.mem.Allocator) !GameWindow {
     rl.setConfigFlags(.{ .window_resizable = true, .window_highdpi = true });
@@ -64,6 +61,7 @@ pub fn init(alloc: std.mem.Allocator) !GameWindow {
         .cam_rel_pos = .zero(),
         .ressource_manager = res_mana,
         .chunk_mat = res_mana.materials.get("chunk").?,
+        .compass = res_mana.models.get("compass.glb").?,
     };
 }
 
@@ -225,7 +223,7 @@ pub fn drawWorld(self: GameWindow) void {
         rl.gl.rlDisableWireMode();
 
     // Draw ourself
-    {
+    if (self.f3_enabled) {
         const box = game.player.hitbox;
         const size = box.size();
         rl.drawCubeWires(
@@ -249,7 +247,7 @@ pub fn drawWorld(self: GameWindow) void {
         const camdir = self.camera.target.subtract(self.camera.position).normalize();
         const sidedir = camdir.crossProduct(self.camera.up).normalize();
         const pos = self.camera.position.add(camdir.scale(0.1)).add(sidedir.scale(0.0));
-        rl.drawModel(compass, pos, 0.005, .white);
+        rl.drawModel(self.compass.*, pos, 0.005, .white);
     }
 
     self.camera.end();

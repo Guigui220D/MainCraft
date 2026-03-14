@@ -13,7 +13,6 @@ on_ground: bool,
 
 pub fn receive(_: std.mem.Allocator, stream: *std.Io.Reader) !@This() {
     return .{
-        // Ah yes, nice layout
         .x_position = @bitCast(try stream.takeInt(u64, net.endianness)),
         .y_position = @bitCast(try stream.takeInt(u64, net.endianness)),
         .y_center_position = @bitCast(try stream.takeInt(u64, net.endianness)),

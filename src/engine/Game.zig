@@ -134,6 +134,7 @@ pub fn handlePacket(self: *Game, packet: net.InboundPacket) !void {
             }
         },
         .player_look_move_13 => |plm| {
+            std.log.warn("Player rollback! Possibily illegal movement", .{});
             self.player.resetPosition(.{
                 .x = plm.x_position,
                 .y = plm.y_position,
@@ -204,7 +205,7 @@ pub fn handlePacket(self: *Game, packet: net.InboundPacket) !void {
             try self.world.doPreChunk(.{ .x = pc.x_position, .z = pc.z_position }, pc.mode);
         },
         .map_chunk_51 => |mc| {
-            try self.world.doChunkMap(
+            self.world.doChunkMap(
                 mc.x_position,
                 mc.y_position,
                 mc.z_position,
@@ -212,22 +213,28 @@ pub fn handlePacket(self: *Game, packet: net.InboundPacket) !void {
                 mc.y_size,
                 mc.z_size,
                 mc.data,
-            );
+            ) catch |e| {
+                std.log.err("Couldn't do chunk map near x:{}, z:{}, error {}", .{ mc.x_position, mc.z_position, e });
+            };
         },
         .multi_block_change_52 => |mbc| {
-            try self.world.doMultiBlockChange(
+            self.world.doMultiBlockChange(
                 .{ .x = mbc.x_position, .z = mbc.z_position },
                 mbc.coord_array,
                 mbc.block_ids,
                 mbc.block_metas,
-            );
+            ) catch |e| {
+                std.log.err("Edit chunk at x:{}, z:{}, error {}", .{ mbc.x_position, mbc.z_position, e });
+            };
         },
         .block_change_53 => |bc| {
-            try self.world.setBlockIdAndMetadata(
+            self.world.setBlockIdAndMetadata(
                 .{ .x = bc.x_position, .y = bc.y_position, .z = bc.z_position },
                 bc.block_id,
                 @truncate(bc.block_meta),
-            );
+            ) catch |e| {
+                std.log.err("Couldn't set block at x:{}, z:{}, error {}", .{ bc.x_position, bc.z_position, e });
+            };
         },
         inline else => |pack| {
             if (!@hasDecl(@TypeOf(pack), "do_not_print"))

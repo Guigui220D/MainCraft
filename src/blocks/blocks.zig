@@ -135,7 +135,7 @@ pub const table = [256]Block{
     .{ .name = "snow", .tex_id = texpos(2, 4) },
     .{ .name = "cactus", .tex_id = texpos(6, 4), .top_tex_id = texpos(5, 4), .bottom_tex_id = texpos(7, 4), .flags = .{ .model = .cactus, .transparent = true } },
     .{ .name = "clay", .tex_id = texpos(8, 4) },
-    .{},
+    .{ .name = "reeds", .tex_id = texpos(9, 4), .flags = .{ .model = .plant, .transparent = true, .hitbox = false } },
     .{},
     .{},
     .{ .name = "pumpkin", .tex_id = texpos(7, 7), .east_tex_id = texpos(6, 7), .south_tex_id = texpos(6, 7), .west_tex_id = texpos(6, 7), .top_tex_id = texpos(6, 6), .bottom_tex_id = texpos(6, 6), .flags = .{ .model = .full_advanced } },

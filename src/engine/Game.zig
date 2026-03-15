@@ -215,7 +215,7 @@ pub fn handlePacket(self: *Game, packet: net.InboundPacket) !void {
         },
         .entity_teleport_34 => |tp| {
             if (self.entities.get(tp.entity_id)) |entity| {
-                entity.move(
+                entity.setPosition(
                     .fromIntsDiv32(tp.x_position, tp.y_position, tp.z_position),
                 );
             }

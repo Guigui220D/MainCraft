@@ -44,7 +44,7 @@ pub fn init(game: *Game, alloc: std.mem.Allocator, client: *Client, window: *io.
     game.window = window;
 
     // General variables
-    game.last_tick = 0;
+    game.last_tick = std.time.milliTimestamp();
     game.time = .init(0);
     game.server_time = 0;
 
@@ -76,15 +76,17 @@ pub fn update(self: *Game, delta: f32) !void {
     _ = try self.world.updateModel();
 
     self.player.update(delta);
-    _ = try self.maybeTick();
+    _ = try self.doTicks();
 }
 
 /// Run engine tick if enough time has passed
-fn maybeTick(self: *Game) !bool {
-    const do_tick = self.shouldTick();
-    if (do_tick)
+fn doTicks(self: *Game) !bool {
+    var did_tick = false;
+    while (self.shouldTick()) {
         try self.tick();
-    return do_tick;
+        did_tick = true;
+    }
+    return did_tick;
 }
 
 /// Run engine tick
@@ -263,7 +265,7 @@ pub fn handlePacket(self: *Game, packet: net.InboundPacket) !void {
 /// Returns true when enough time has passed and game should tick
 fn shouldTick(self: *Game) bool {
     if (std.time.milliTimestamp() - self.last_tick >= 50) {
-        self.last_tick = std.time.milliTimestamp();
+        self.last_tick += 50;
         return true;
     } else {
         return false;

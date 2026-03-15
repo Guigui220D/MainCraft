@@ -3,6 +3,7 @@
 const std = @import("std");
 const io = @import("io");
 const coord = @import("coord");
+const DrawContext = io.DrawContext;
 
 const Entity = @This();
 
@@ -29,8 +30,8 @@ pub fn startAnimation(self: *Entity, animation: u8) void {
     self.entity_model.startAnimation(animation);
 }
 
-pub fn draw(self: Entity) void {
-    self.entity_model.draw();
+pub fn draw(self: Entity, context: DrawContext) void {
+    self.entity_model.draw(context);
 }
 
 pub const Data = union(Type) {

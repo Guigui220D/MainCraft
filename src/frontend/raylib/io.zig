@@ -7,5 +7,6 @@ pub const GameWindow = @import("GameWindow.zig");
 pub const ChunkModel = @import("ChunkModel.zig");
 pub const EntityModel = @import("EntityModel.zig");
 pub const properties = @import("properties.zig");
+pub const DrawContext = @import("DrawContext.zig");
 
 pub const frontend_name = "raylib";

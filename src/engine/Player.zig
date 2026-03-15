@@ -88,14 +88,14 @@ pub fn setHeadAngle(self: *Player, yaw: f32, pitch: f32) void {
 }
 
 pub fn resetPosition(self: *Player, pos: coord.Vec3f) void {
-    self.last_pos = pos;
+    //self.last_pos = pos;
     self.pos = pos;
 }
 
 pub fn resetHeadAngle(self: *Player, yaw: f32, pitch: f32) void {
-    self.last_yaw = yaw;
+    //self.last_yaw = yaw;
     self.yaw = yaw;
-    self.last_pitch = pitch;
+    //self.last_pitch = pitch;
     self.pitch = pitch;
 }
 

@@ -289,7 +289,7 @@ pub fn drawWorld(self: GameWindow) void {
     var it = game.entities.entities.iterator();
     while (it.next()) |entry| {
         const entity = entry.value_ptr.*;
-        entity.draw();
+        entity.draw(.{ .camera = self.camera });
     }
 
     // Draw 3d debug info

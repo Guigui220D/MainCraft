@@ -6,6 +6,7 @@ const rl = @import("raylib");
 const coord = @import("coord");
 const Entity = @import("engine").entities.Entity;
 const GameWindow = @import("GameWindow.zig");
+const DrawContext = @import("DrawContext.zig");
 
 const EntityModel = @This();
 
@@ -16,15 +17,29 @@ anim_frame: i32,
 animation: ?*rl.ModelAnimation,
 model: ?*const rl.Model,
 time_buf_us: usize,
+display_str_buf: [32]u8,
+display_str_len: usize,
 
 pub fn initForEntity(_: std.mem.Allocator, entity: *Entity, game_window: *GameWindow) !EntityModel {
-    return .{
+    var ret: EntityModel = .{
         .entity = entity,
         .anim_frame = 0,
         .time_buf_us = 0,
         .animation = null,
         .model = if (entity.data == .player) game_window.ressource_manager.models.get("character-a.glb").? else null,
+        .display_str_buf = undefined,
+        .display_str_len = 0,
     };
+
+    if (entity.data == .player) {
+        const slice = try std.fmt.bufPrintZ(&ret.display_str_buf, "{s} {}", .{ entity.data.player.username, entity.id });
+        ret.display_str_len = slice.len;
+    } else {
+        const slice = try std.fmt.bufPrintZ(&ret.display_str_buf, "{}", .{entity.id});
+        ret.display_str_len = slice.len;
+    }
+
+    return ret;
 }
 
 pub fn startAnimation(_: *EntityModel, _: u8) void {
@@ -34,7 +49,7 @@ pub fn startAnimation(_: *EntityModel, _: u8) void {
 
 pub fn deinit(_: EntityModel, _: std.mem.Allocator) void {}
 
-pub fn draw(self: EntityModel) void {
+pub fn draw(self: EntityModel, context: DrawContext) void {
     const pos = self.entity.pos;
     var rl_pos: rl.Vector3 = .{ .x = @floatCast(pos.x), .y = @floatCast(pos.y), .z = @floatCast(pos.z) };
 
@@ -75,6 +90,23 @@ pub fn draw(self: EntityModel) void {
             .wolf => rl.drawSphere(rl_pos, 0.4, .red),
             .player => unreachable,
         }
+    }
+
+    if (rl_pos.distanceSqr(context.camera.position) < 200) {
+        const text_pos = rl.getWorldToScreen(rl_pos.add(.{ .x = 0, .y = 1.2, .z = 0 }), context.camera);
+        const text: [:0]const u8 = @ptrCast(self.display_str_buf[0..self.display_str_len]);
+        const font_size = 20;
+
+        // TODO: is this fine?
+        context.camera.end();
+        rl.drawText(
+            text,
+            @as(i32, @intFromFloat(text_pos.x)) - @divFloor(rl.measureText(text, font_size), 2),
+            @intFromFloat(text_pos.y),
+            font_size,
+            .black,
+        );
+        context.camera.begin();
     }
 }
 

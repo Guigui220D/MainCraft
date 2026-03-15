@@ -21,6 +21,8 @@ const gravity = 0.08;
 
 /// Reference to the game
 game: *Game,
+/// Health level
+health: u8,
 /// Current position of the player
 pos: coord.Vec3f,
 /// Vertical speed
@@ -52,6 +54,7 @@ walking: packed struct {
 pub fn init(game: *Game) Player {
     var ret: Player = undefined;
     ret.game = game;
+    ret.health = 20;
     ret.pos = .{ .x = 0, .y = 0, .z = 0 };
     ret.vspeed = -0.1;
     ret.on_ground = false;

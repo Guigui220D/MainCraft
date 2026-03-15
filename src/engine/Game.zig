@@ -109,7 +109,12 @@ fn tick(self: *Game) !void {
         }
     }
 
+    // Window tick (for visual stuff)
+    self.window.tick();
+
+    //
     if (self.client.is_connected) {
+        // TODO: Is this the problem where rollback doesn't work?
         const position_packet = self.player.makePositionPacket();
         self.client.enqueuePacket(position_packet);
     }
@@ -131,6 +136,18 @@ pub fn handlePacket(self: *Game, packet: net.InboundPacket) !void {
             } else {
                 // We are on time or late
                 self.time.store(time.time, .unordered);
+            }
+        },
+        .update_health_8 => |health| {
+            const old_health = self.player.health;
+            self.player.health = @truncate(health.health);
+
+            if (old_health > health.health) {
+                // Been hurt
+                self.window.showHurt();
+            } else if (old_health < health.health) {
+                // Been healed
+                self.window.showHealed();
             }
         },
         .player_look_move_13 => |plm| {

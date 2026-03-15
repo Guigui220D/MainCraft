@@ -32,8 +32,10 @@ game: ?*engine.Game = null,
 ressource_manager: RessourceManager,
 chunk_mat: *const rl.Material,
 compass: *const rl.Model,
+icons: *const rl.Texture,
 selected_block: ?coord.Block = null,
 window_size: rl.Vector2,
+heal_hurt: i16,
 
 pub fn init(alloc: std.mem.Allocator) !GameWindow {
     rl.setConfigFlags(.{ .window_resizable = true, .window_highdpi = true });
@@ -65,7 +67,9 @@ pub fn init(alloc: std.mem.Allocator) !GameWindow {
         .ressource_manager = res_mana,
         .chunk_mat = res_mana.materials.get("chunk").?,
         .compass = res_mana.models.get("compass.glb").?,
+        .icons = res_mana.textures.get("icons.png").?,
         .window_size = .{ .x = @floatFromInt(rl.getScreenWidth()), .y = @floatFromInt(rl.getScreenHeight()) },
+        .heal_hurt = 0,
     };
 }
 
@@ -177,7 +181,7 @@ pub fn update(self: *GameWindow, delta: f32) !void {
         const pos_in_chunk = pos_block.getPosInChunk();
         const time = game.time.load(.unordered);
         const block_id = if (self.selected_block) |selected| game.world.getBlockId(selected) else 0;
-        self.f3_str = try std.fmt.bufPrintZ(&self.f3_buf, "camera: {}\nplayer: {}\nblock: {}\nchunk: {}\nin chunk: {}\nfocused: {}\ntime: {}\nblock aimed at: {?}\nblock id: {} {s}", .{
+        self.f3_str = try std.fmt.bufPrintZ(&self.f3_buf, "camera: {}\nplayer: {}\nblock: {}\nchunk: {}\nin chunk: {}\nfocused: {}\ntime: {}\nblock aimed at: {?}\nblock id: {} {s}\nhealth: {}", .{
             cam_pos,
             pos,
             pos_block,
@@ -188,7 +192,16 @@ pub fn update(self: *GameWindow, delta: f32) !void {
             self.selected_block,
             block_id,
             blocks.table[block_id].name,
+            game.player.health,
         });
+    }
+}
+
+pub fn tick(self: *GameWindow) void {
+    if (self.heal_hurt > 0) {
+        self.heal_hurt -= 1;
+    } else if (self.heal_hurt < 0) {
+        self.heal_hurt += 1;
     }
 }
 
@@ -246,16 +259,26 @@ pub fn drawWorld(self: GameWindow) void {
         rl.gl.rlDisableWireMode();
 
     // Draw ourself
-    if (self.f3_enabled) {
+    if (self.f3_enabled or self.freecam) {
         const box = game.player.hitbox;
         const size = box.size();
-        rl.drawCubeWires(
-            vec.coordToRlVec(game.player.pos).add(.{ .x = 0, .y = @floatCast(size.y / 2.0), .z = 0 }),
-            @floatCast(size.x),
-            @floatCast(size.y),
-            @floatCast(size.z),
-            .dark_purple,
-        );
+        if (self.freecam) {
+            rl.drawCube(
+                vec.coordToRlVec(game.player.pos).add(.{ .x = 0, .y = @floatCast(size.y / 2.0), .z = 0 }),
+                @floatCast(size.x),
+                @floatCast(size.y),
+                @floatCast(size.z),
+                .dark_purple,
+            );
+        } else {
+            rl.drawCubeWires(
+                vec.coordToRlVec(game.player.pos).add(.{ .x = 0, .y = @floatCast(size.y / 2.0), .z = 0 }),
+                @floatCast(size.x),
+                @floatCast(size.y),
+                @floatCast(size.z),
+                .dark_purple,
+            );
+        }
     }
 
     // Draw block selector/damage
@@ -286,17 +309,85 @@ pub fn drawGui(self: GameWindow) void {
         return;
     }
 
+    const game = self.game.?;
+
+    // Freecam mode indicator
     if (self.freecam)
         rl.drawCircle(10, 10, 5, .red);
 
+    // F3 menu
     if (self.f3_enabled)
         rl.drawText(self.f3_str, 10, 10, 20, .black);
 
+    // Crosshair
     rl.drawCircleLinesV(self.window_size.scale(0.5), 5, .black);
+
+    // Health bar
+    if (!self.f3_enabled and !self.freecam) {
+        const status: HealthBarStatus = if (@mod(self.heal_hurt, 2) == 1) (if (self.heal_hurt > 0) .healing else .hurting) else .neutral;
+        drawHealthBar(game.player.health, self.icons, status);
+        if (self.heal_hurt < 0)
+            rl.drawRectangle(0, 0, 10000, 10000, .init(200, 50, 50, 127));
+    }
 }
 
 pub fn endDraw(_: GameWindow) void {
     rl.endDrawing();
+}
+
+pub fn showHealed(gw: *GameWindow) void {
+    gw.heal_hurt = 7;
+}
+
+pub fn showHurt(gw: *GameWindow) void {
+    gw.heal_hurt = -7;
+}
+
+const HealthBarStatus = enum { neutral, healing, hurting };
+fn drawHealthBar(health_level: u8, icons: *const rl.Texture, status: HealthBarStatus) void {
+    var offset: u8 = 0;
+    for (0..10) |_| {
+        // Draw heart background
+        const source_x: f32 = switch (status) {
+            .neutral => 16,
+            .healing => 16 + 9,
+            .hurting => 16 + 9 + 9,
+        };
+        rl.drawTexturePro(
+            icons.*,
+            .{ .x = source_x, .y = 0, .width = 9, .height = 9 },
+            .{ .x = @as(f32, @floatFromInt(offset)) * 20 + 2, .y = 2, .width = 20, .height = 20 },
+            rl.Vector2.zero(),
+            0,
+            rl.Color.white,
+        );
+        offset += 1;
+    }
+    offset = 0;
+    for (0..(health_level / 2)) |_| {
+        // Draw full heart
+        rl.drawTexturePro(
+            icons.*,
+            .{ .x = 52, .y = 0, .width = 9, .height = 9 },
+            .{ .x = @as(f32, @floatFromInt(offset)) * 20 + 2, .y = 2, .width = 20, .height = 20 },
+            rl.Vector2.zero(),
+            0,
+            rl.Color.white,
+        );
+        offset += 1;
+    }
+    if (health_level % 2 == 1) {
+        // Draw half heart
+        rl.drawTexturePro(
+            icons.*,
+            .{ .x = 61, .y = 0, .width = 9, .height = 9 },
+            .{ .x = @as(f32, @floatFromInt(offset)) * 20 + 2, .y = 2, .width = 20, .height = 20 },
+            rl.Vector2.zero(),
+            0,
+            rl.Color.white,
+        );
+        offset += 1;
+    }
 }
 
 pub fn deinit(self: *GameWindow) void {

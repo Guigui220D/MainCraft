@@ -23,6 +23,8 @@ pub fn update(_: *GameWindow, _: f32) !void {
     std.Thread.sleep(16000000);
 }
 
+pub fn tick(_: *GameWindow) void {}
+
 pub fn enterGame(_: *GameWindow, _: *engine.Game) void {
     std.debug.print("Game started!\n", .{});
 }
@@ -38,5 +40,9 @@ pub fn drawWorld(_: GameWindow, _: terrain.World, _: entities.EntityManager) voi
 pub fn drawGui(_: GameWindow) void {}
 
 pub fn endDraw(_: GameWindow) void {}
+
+pub fn showHealed(_: *GameWindow) void {}
+
+pub fn showHurt(_: *GameWindow) void {}
 
 pub fn deinit(_: GameWindow) void {}

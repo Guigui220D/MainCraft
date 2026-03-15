@@ -31,6 +31,7 @@ pub fn init(alloc: std.mem.Allocator) !RessourceManager {
 pub fn loadAll(self: *RessourceManager) !void {
     // Textures
     try self.loadTexture("res/jar/minecraft/terrain.png");
+    try self.loadTexture("res/jar/minecraft/gui/icons.png");
 
     // Models
     try self.loadModel("res/kenney/character-a.glb");

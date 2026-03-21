@@ -75,8 +75,9 @@ pub fn update(self: *Game, delta: f32) !void {
 
     _ = try self.world.updateModel();
 
-    self.player.update(delta);
     _ = try self.doTicks();
+
+    _ = delta;
 }
 
 /// Run engine tick if enough time has passed
@@ -110,6 +111,9 @@ fn tick(self: *Game) !void {
             self.time.store(time + 1, .unordered);
         }
     }
+
+    // Entity updates
+    self.player.tick();
 
     // Window tick (for visual stuff)
     self.window.tick();

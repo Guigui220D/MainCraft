@@ -5,15 +5,12 @@ const coord = @import("coord");
 const net = @import("net");
 const Game = @import("Game.zig");
 const blocks = @import("blocks");
+const mc = @import("entities/movement_constants.zig");
 
 const Player = @This();
 
-/// Player walking speed
-const player_speed = 4.317; // TODO: Check this value in the code
-/// Jumping acceleration on the Y axis (once when jumping)
-const jumping_acc = 0.42;
-/// Gravity acceleration (per tick)
-const gravity = 0.08;
+// Made with the help of
+// https://pixelbrush.dev/beta-wiki/entities/movement
 
 // TODO for player movement:
 // blocks pushing against instead of cancelling movement
@@ -25,16 +22,18 @@ game: *Game,
 health: u8,
 /// Current position of the player
 pos: coord.Vec3f,
-/// Vertical speed
-vspeed: f64,
+/// Velocity
+vel: coord.Vec3f,
 /// On ground flag
 on_ground: bool,
-/// Never been on ground (before loading terrain)
-been_on_ground: bool,
 /// Hitbox
 hitbox: coord.HitboxAABB,
 /// Last position sent to the server
 last_pos: coord.Vec3f,
+/// Forward movement potential
+move_forward: f32,
+/// Strafe movement potential
+move_strafe: f32,
 /// Head yaw in degrees (rotation along y axis)
 yaw: f32,
 /// Last yaw sent to the server
@@ -52,29 +51,30 @@ walking: packed struct {
 },
 
 pub fn init(game: *Game) Player {
-    var ret: Player = undefined;
-    ret.game = game;
-    ret.health = 20;
-    ret.pos = .{ .x = 0, .y = 0, .z = 0 };
-    ret.vspeed = -0.1;
-    ret.on_ground = false;
-    ret.been_on_ground = false;
-    ret.hitbox = .{
-        .a = .{ .x = -0.3, .y = 0, .z = -0.3 },
-        .b = .{ .x = 0.3, .y = 1.8, .z = 0.3 },
+    const ret: Player = .{
+        .game = game,
+        .health = 20,
+        .pos = .{ .x = 0, .y = 0, .z = 0 },
+        .vel = .{ .x = 0, .y = 0, .z = 0 },
+        .on_ground = false,
+        .hitbox = .{
+            .a = .{ .x = -0.3, .y = 0, .z = -0.3 },
+            .b = .{ .x = 0.3, .y = 1.8, .z = 0.3 },
+        },
+        .last_pos = .{ .x = 0, .y = 0, .z = 0 },
+        .move_forward = 0,
+        .move_strafe = 0,
+        .yaw = 0,
+        .last_yaw = 0,
+        .pitch = 0,
+        .last_pitch = 0,
+        .walking = .{
+            .forward = false,
+            .backward = false,
+            .left = false,
+            .right = false,
+        },
     };
-    ret.last_pos = .{ .x = 0, .y = 0, .z = 0 };
-    ret.yaw = 0;
-    ret.last_yaw = 0;
-    ret.pitch = 0;
-    ret.last_pitch = 0;
-    ret.walking = .{
-        .forward = false,
-        .backward = false,
-        .left = false,
-        .right = false,
-    };
-
     return ret;
 }
 
@@ -102,101 +102,79 @@ pub fn resetHeadAngle(self: *Player, yaw: f32, pitch: f32) void {
 pub fn jump(self: *Player) void {
     if (!self.on_ground)
         return;
-    self.vspeed = jumping_acc;
+    //self.vspeed = jumping_acc;
     self.on_ground = false;
 }
 
-pub fn update(self: *Player, delta: f32) void {
-    // Save movement in order to cancel it (temporary)
-    var prev_pos = self.pos;
+pub fn tick(self: *Player) void {
+    // decay input axes
+    self.move_forward *= mc.input_decay;
+    self.move_strafe *= mc.input_decay;
 
-    // Normalize movement
-    var mov_x_local: f32 = 0;
-    var mov_z_local: f32 = 0;
+    // apply keyboard controls
+    self.applyKeyboardControls();
 
-    const was_touching_block = self.sideTouchesTerrain(.up);
+    const friction = mc.default_block_slipperiness * mc.horizontal_friction;
+    const acceleration = 0.1 * mc.normal_friction_cubed / (friction * friction * friction);
 
-    if (self.walking.forward)
-        mov_x_local += 1;
+    // TODO: sneaking
+    // TODO: jumping
+    // TODO: other scenarios
 
-    if (self.walking.backward)
-        mov_x_local -= 1;
+    self.applyInput(self.move_strafe, self.move_forward, acceleration);
 
-    if (self.walking.left)
-        mov_z_local -= 1;
+    //self.move(self.vel);
 
-    if (self.walking.right)
-        mov_z_local += 1;
-
-    const norm = @sqrt(mov_x_local * mov_x_local + mov_z_local * mov_z_local);
-    if (norm > 0.01) {
-        mov_x_local /= norm;
-        mov_z_local /= norm;
-
-        const yaw = std.math.degreesToRadians(-self.yaw);
-
-        const delta_x = (-@sin(yaw) * mov_x_local + @cos(yaw) * mov_z_local) * delta * player_speed;
-        const delta_z = (-@cos(yaw) * mov_x_local - @sin(yaw) * mov_z_local) * delta * player_speed;
-
-        // Apply movement
-        self.pos.x += delta_x;
-        self.pos.z += delta_z;
-
-        // Limit movement when touching a wall
-        if (!was_touching_block) {
-            if (delta_x > 0) {
-                if (self.sideTouchesTerrain(.east)) {
-                    self.pos.x = prev_pos.x;
-                }
-            } else {
-                if (self.sideTouchesTerrain(.west)) {
-                    self.pos.x = prev_pos.x;
-                }
-            }
-
-            if (delta_z > 0) {
-                if (self.sideTouchesTerrain(.south)) {
-                    self.pos.z = prev_pos.z;
-                }
-            } else {
-                if (self.sideTouchesTerrain(.north)) {
-                    self.pos.z = prev_pos.z;
-                }
-            }
-        }
+    if (self.touchesTerrain()) { // Temporary
+        self.vel.y = 0;
+    } else {
+        self.vel.y -= mc.gravity;
     }
+    self.vel.y *= mc.vertical_friction;
+    self.vel.x *= friction;
+    self.vel.z *= friction;
 
-    self.walking.forward = false;
-    self.walking.backward = false;
-    self.walking.left = false;
-    self.walking.right = false;
+    self.pos.x += self.vel.x;
+    self.pos.y += self.vel.y;
+    self.pos.z += self.vel.z;
+}
 
-    //if (self.touchesTerrain())
-    //    self.pos = prev_pos;
-
-    // Gravity (temporary, prototype)
-    // TODO: not sure about all of this!
-    prev_pos = self.pos;
-    if (self.been_on_ground)
-        self.vspeed -= gravity * delta * 20; // *20 because per tick
-    self.pos.y += self.vspeed * delta * 32; // 32 because the values are divided by 32 in the original (??)
-
-    if (self.vspeed > 0) {
-        if (self.sideTouchesTerrain(.up)) {
-            self.vspeed = 0;
-        }
-    } else if (self.vspeed < 0) {
-        if (self.sideTouchesTerrain(.down)) {
-            self.pos.y = @round(self.pos.y);
-            self.vspeed = 0;
-            self.been_on_ground = true;
-            self.on_ground = true;
-        }
+/// consider keyboard input in
+fn applyKeyboardControls(self: *Player) void {
+    if (self.walking.forward) {
+        self.walking.forward = false;
+        self.move_forward = 1;
     }
+    if (self.walking.backward) {
+        self.walking.backward = false;
+        self.move_forward = -1;
+    }
+    if (self.walking.left) {
+        self.walking.left = false;
+        self.move_strafe = 1;
+    }
+    if (self.walking.right) {
+        self.walking.right = false;
+        self.move_strafe = -1;
+    }
+}
 
-    //while (self.feetsTouchTerrain()) {
-    //self.pos.y += 0.1 * delta;
-    //}
+/// Converts strafe/forward input into a velocity impulse along the entity's facing direction
+fn applyInput(self: *Player, strafe: f32, forward: f32, accel: f32) void {
+    var length = @sqrt(strafe * strafe + forward * forward);
+
+    if (length < 0.1)
+        return;
+
+    if (length < 1.0)
+        length = 1.0;
+
+    const new_strafe = strafe / length;
+    const new_forward = forward / length;
+    const yaw = std.math.degreesToRadians(self.yaw);
+
+    self.vel.x += (new_strafe * @cos(yaw) + new_forward * @sin(yaw)) * accel;
+    self.vel.z += (-new_forward * @cos(yaw) + new_strafe * @sin(yaw)) * accel;
 }
 
 // Temporary: later, smarter things with how much of a movement should be cancelled and all
@@ -205,7 +183,7 @@ fn touchesTerrain(self: Player) bool {
     var block_it = hitbox.getBlocks();
     while (block_it.next()) |block_pos| {
         const block_id = self.game.world.getBlockId(block_pos);
-        const blocking = blocks.table[block_id].hitbox;
+        const blocking = blocks.table[block_id].flags.hitbox;
         if (blocking)
             return true;
     }
